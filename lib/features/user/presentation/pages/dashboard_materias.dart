@@ -237,7 +237,7 @@ class _DashboardMateriasState extends State<DashboardMaterias> {
                                 hora: materia.hora,
                                 turno: materia.turno,
                                 status: materia.status,
-                                onTap: () => context.go(
+                                onTap: () => context.push(
                                   '/materia',
                                   extra: MateriaData(
                                     nombre: materia.nombre,

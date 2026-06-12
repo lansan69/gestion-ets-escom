@@ -61,6 +61,10 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
         automaticallyImplyLeading: false,
         title: Text(_title(location, state.extra)),
         foregroundColor: Colors.white,
@@ -74,7 +78,7 @@ class AppShell extends StatelessWidget {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
-        onTap: (i) => context.go(_tabs[i].path),
+        onTap: (i) => context.push(_tabs[i].path),
         selectedItemColor: AppColors.navBarActiveItem,
         unselectedItemColor: AppColors.navBarInactiveItem,
         backgroundColor: AppColors.navBarBackground,

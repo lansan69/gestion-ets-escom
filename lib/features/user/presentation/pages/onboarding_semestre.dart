@@ -172,12 +172,12 @@ class _OnBoardingSemestreState extends State<OnBoardingSemestre> {
                     AppPrimaryButton(
                       label: 'Continuar',
                       width: buttonWidth,
-                      onPressed: () => context.go('/inicio'),
+                      onPressed: () => context.push('/inicio'),
                     ),
                     AppSecondaryButton(
                       label: 'Omitir',
                       width: buttonWidth,
-                      onPressed: () => context.go('/inicio'),
+                      onPressed: () => context.push('/inicio'),
                     ),
                   ],
                 ),

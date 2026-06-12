@@ -170,12 +170,12 @@ class OnBoardingCarrera extends ConsumerWidget {
                     AppPrimaryButton(
                       label: 'Continuar',
                       width: buttonWidth,
-                      onPressed: () => context.go('/onboarding/semestre'),
+                      onPressed: () => context.push('/onboarding/semestre'),
                     ),
                     AppSecondaryButton(
                       label: 'Omitir',
                       width: buttonWidth,
-                      onPressed: () => context.go('/inicio'),
+                      onPressed: () => context.push('/inicio'),
                     ),
                   ],
                 ),

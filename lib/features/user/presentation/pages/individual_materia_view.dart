@@ -3,6 +3,7 @@ import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/card_materia_expanded.dart';
+import 'package:go_router/go_router.dart';
 
 class MateriaData {
   final String nombre;
@@ -35,14 +36,17 @@ class IndividualMateriaView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topOffset = MediaQuery.of(context).size.height * 0.08 + 10;
-    return Container(
-      height: double.infinity,
-      width: double.infinity,
-      color: data.barColor,
-      child: Stack(
+    final topPadding = MediaQuery.of(context).padding.top; // status bar height
+    final topOffset = topPadding + MediaQuery.of(context).size.height * 0.08;
+
+    return Scaffold(
+      backgroundColor: data.barColor,
+      body: Stack(
         children: [
+          // Background pattern covers the full screen
           CustomPaint(size: Size.infinite, painter: BackgroundPatternPainter()),
+
+          // White card content area
           Positioned(
             top: topOffset,
             left: 0,
@@ -54,6 +58,7 @@ class IndividualMateriaView extends StatelessWidget {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 32),
                 child: Column(
                   children: [
                     CardExamenMateriaExpanded(
@@ -83,10 +88,19 @@ class IndividualMateriaView extends StatelessWidget {
                       label: 'Agendar recordatorio',
                       onPressed: () {},
                     ),
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),
+            ),
+          ),
+
+          // Back button floating over the colored header area
+          Positioned(
+            top: topPadding + 8,
+            left: 8,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => context.pop(),
             ),
           ),
         ],

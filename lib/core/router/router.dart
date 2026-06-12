@@ -11,12 +11,9 @@ import 'package:gestion_ets_escom/features/user/presentation/pages/onboarding_ca
 import 'package:gestion_ets_escom/features/user/presentation/pages/onboarding_semestre.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/onboarding/carrera',
+  initialLocation: '/bienvenida',
   routes: [
-    GoRoute(
-      path: '/bienvenida',
-      builder: (_, _) => const WelcomePage(),
-    ),
+    GoRoute(path: '/bienvenida', builder: (_, _) => const WelcomePage()),
     GoRoute(
       path: '/onboarding/semestre',
       builder: (_, _) => const OnBoardingSemestre(),
@@ -25,18 +22,15 @@ final GoRouter appRouter = GoRouter(
       path: '/onboarding/carrera',
       builder: (_, _) => const OnBoardingCarrera(),
     ),
+    GoRoute(
+      path: '/materia',
+      builder: (_, state) =>
+          IndividualMateriaView(data: state.extra as MateriaData),
+    ),
     ShellRoute(
       builder: (_, _, child) => AppShell(child: child),
       routes: [
-        GoRoute(
-          path: '/inicio',
-          builder: (_, _) => DashboardMaterias(),
-        ),
-        GoRoute(
-          path: '/materia',
-          builder: (_, state) =>
-              IndividualMateriaView(data: state.extra as MateriaData),
-        ),
+        GoRoute(path: '/inicio', builder: (_, _) => DashboardMaterias()),
         GoRoute(
           path: '/explorar',
           builder: (_, _) => const _PlaceholderTab(label: 'Explorar'),
@@ -45,10 +39,7 @@ final GoRouter appRouter = GoRouter(
               path: 'carrera',
               builder: (_, _) => ExploreMateriasCarrera(),
             ),
-            GoRoute(
-              path: 'semestre',
-              builder: (_, _) => ExploreSemestres(),
-            ),
+            GoRoute(path: 'semestre', builder: (_, _) => ExploreSemestres()),
             GoRoute(
               path: 'seleccion',
               builder: (_, _) => ExploreMateriasSelection(),

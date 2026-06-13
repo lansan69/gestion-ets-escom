@@ -23,12 +23,6 @@ class AppShell extends StatelessWidget {
       label: 'Inicio',
     ),
     (
-      path: '/explorar',
-      icon: Icons.explore_outlined,
-      activeIcon: Icons.explore,
-      label: 'Explorar',
-    ),
-    (
       path: '/calendario',
       icon: Icons.calendar_month_outlined,
       activeIcon: Icons.calendar_month,

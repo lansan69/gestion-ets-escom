@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
+import 'package:go_router/go_router.dart';
 
-class WelcomePage extends StatelessWidget {
+class WelcomePage extends ConsumerWidget {
   const WelcomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(carrerasProvider);
     const double avatarRadius = 40;
     final double buttonWidth = MediaQuery.of(context).size.width * 0.9;
 
@@ -71,7 +75,7 @@ class WelcomePage extends StatelessWidget {
                         AppPrimaryButton(
                           label: 'Comenzar',
                           width: buttonWidth,
-                          onPressed: () => print('Comenzar pressed'),
+                          onPressed: () => context.push('/onboarding/carrera'),
                         ),
                         AppSecondaryButton(
                           label: 'Soy personal de Gestión',

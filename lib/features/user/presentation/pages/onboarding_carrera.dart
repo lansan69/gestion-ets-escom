@@ -8,8 +8,7 @@ import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/ap
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/selectable_career_card.dart';
 
-// removed: dartz, failures, datasource, repository, usecase, supabase
-
+// Lista de colores que se aplican de forma cíclica a cada tarjeta de carrera.
 const List<Color> _carreraColors = [
   AppColors.primaryDarkBlue,
   AppColors.statusComingSoonForeground,
@@ -18,25 +17,26 @@ const List<Color> _carreraColors = [
 ];
 
 class OnBoardingCarrera extends ConsumerWidget {
-  // ✅ no longer StatefulWidget
+  // Widget sin estado que obtiene sus datos de los providers de Riverpod.
   const OnBoardingCarrera({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Ancho dinámico de los botones basado en el ancho de la pantalla.
     final double buttonWidth = MediaQuery.of(context).size.width * 0.9;
 
-    // ✅ watch — reacts to loading/data/error
+    // Observa el provider que carga la lista de carreras de forma asíncrona.
     final carrerasAsync = ref.watch(carrerasProvider);
-    // ✅ watch — drives isSelected on each card
+    // Observa el provider que almacena la carrera seleccionada por el usuario.
     final selectedId = ref.watch(selectedCarreraProvider);
-
+    
     return Scaffold(
       backgroundColor: AppColors.primaryDarkBlue,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // ─── header ──────────────────────────────────────────────
+            // Encabezado superior con fondo decorativo y texto de bienvenida.
             Container(
               height: MediaQuery.of(context).size.height * 0.08,
               color: AppColors.primaryDarkBlue,
@@ -65,7 +65,7 @@ class OnBoardingCarrera extends ConsumerWidget {
               ),
             ),
 
-            // ─── main content ─────────────────────────────────────────
+            // Contenido principal con tarjeta blanca y bordes redondeados.
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -82,7 +82,7 @@ class OnBoardingCarrera extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ─── progress bar ─────────────────────────────────
+                    // Barra de progreso que indica el paso actual del onboarding.
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -129,7 +129,7 @@ class OnBoardingCarrera extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // ✅ replaces FutureBuilder + Either handling
+                    // Maneja los estados de carga, error y datos de la lista de carreras.
                     carrerasAsync.when(
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
@@ -143,10 +143,10 @@ class OnBoardingCarrera extends ConsumerWidget {
                               nombre: carreras[i].nombre,
                               colorBarra:
                                   _carreraColors[i % _carreraColors.length],
-                              // ✅ driven by ref.watch
+                              // Ajusta el estado seleccionado según el provider.
                               isSelected: selectedId == carreras[i].id,
                               onToggle: (_, selected) {
-                                // ✅ ref.read — one-off write on tap
+                                // Actualiza el provider de selección cuando el usuario toca la tarjeta.
                                 if (selected) {
                                   ref
                                       .read(selectedCarreraProvider.notifier)

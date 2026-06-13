@@ -7,7 +7,6 @@ class GetExamenById {
   final SharedRepository repository;
   const GetExamenById(this.repository);
 
-  Future<Either<Failure, Examen>> call(int id) {
-    throw UnimplementedError();
-  }
+  Future<Either<Failure, Examen>> call(String id) =>
+      repository.getExamenById(id);
 }

@@ -6,7 +6,7 @@ import 'package:gestion_ets_escom/features/shared/domain/entities/turno.dart';
 
 
 class Examen extends Equatable {
-  final int id;
+  final String id;
   final Materia materia;
   final Salon salon;
   final Profesor profesor;
@@ -49,5 +49,7 @@ class Examen extends Equatable {
         documentoProyecto,
         notas,
         activo,
+        creadoEn,
+        actualizadoEn,
       ];
 }

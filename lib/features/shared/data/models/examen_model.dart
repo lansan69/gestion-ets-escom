@@ -26,7 +26,7 @@ class ExamenModel extends Examen {
   });
 
   factory ExamenModel.fromJson(Map<String, dynamic> json) => ExamenModel(
-        id: json['id'] as int,
+        id: json['id'] as String,
         materia:
             MateriaModel.fromJson(json['materia'] as Map<String, dynamic>),
         salon: SalonModel.fromJson(json['salon'] as Map<String, dynamic>),

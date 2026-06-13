@@ -1,14 +1,12 @@
 import 'package:dartz/dartz.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
-import 'package:gestion_ets_escom/features/admin/domain/repositories/admin_repository.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/salon.dart';
-
+import 'package:gestion_ets_escom/features/shared/domain/repositories/shared_repository.dart';
 
 class GetSalones {
-  final AdminRepository repository;
+  final SharedRepository repository;
   const GetSalones(this.repository);
 
-  Future<Either<Failure, List<Salon>>> call() {
-    throw UnimplementedError();
-  }
+  Future<Either<Failure, List<Salon>>> call() =>
+      repository.getSalones();
 }

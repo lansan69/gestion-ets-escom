@@ -8,10 +8,16 @@ class SearchExamenes {
   const SearchExamenes(this.repository);
 
   Future<Either<Failure, List<Examen>>> call({
-    required int carreraId,
-    required int semestre,
-    int? materiaId,
-  }) {
-    throw UnimplementedError();
-  }
+    String? carreraId,
+    int? semestre,
+    String? materiaId,
+    String? unidadAprendizaje,
+    String? searchTerm,
+  }) => repository.searchExamenes(
+    carreraId: carreraId,
+    semestre: semestre,
+    materiaId: materiaId,
+    unidadAprendizaje: unidadAprendizaje,
+    searchTerm: searchTerm,
+  );
 }

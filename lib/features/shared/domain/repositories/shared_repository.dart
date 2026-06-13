@@ -7,18 +7,21 @@ import 'package:gestion_ets_escom/features/shared/domain/entities/profesor.dart'
 import 'package:gestion_ets_escom/features/shared/domain/entities/salon.dart';
 
 abstract class SharedRepository {
-  // Catalogs
+  // Catálogos
   Future<Either<Failure, List<Carrera>>> getCarreras();
-  Future<Either<Failure, List<Materia>>> getMaterias(int carreraId);
+  Future<Either<Failure, List<Carrera>>> getCarreraById(String carreraId);
+  Future<Either<Failure, List<Materia>>> getMaterias(String carreraId);
   Future<Either<Failure, List<Salon>>> getSalones();
   Future<Either<Failure, List<Profesor>>> getProfesores();
 
   // Exámenes
   Future<Either<Failure, List<Examen>>> getExamenes();
   Future<Either<Failure, List<Examen>>> searchExamenes({
-    required int carreraId,
-    required int semestre,
-    int? materiaId,
+    String? carreraId,
+    int? semestre,
+    String? materiaId,
+    String? unidadAprendizaje,
+    String? searchTerm,
   });
-  Future<Either<Failure, Examen>> getExamenById(int id);
+  Future<Either<Failure, Examen>> getExamenById(String id);
 }

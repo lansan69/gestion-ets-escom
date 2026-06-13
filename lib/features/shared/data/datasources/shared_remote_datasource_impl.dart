@@ -77,13 +77,13 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
     return response.map((json) => ExamenModel.fromJson(json)).toList();
   }
 
-  // Busca exámenes aplicando filtros opcionales sobre materia, carrera y semestres.
+  // Busca exámenes aplicando filtros opcionales sobre materia, carrera, semestres y área.
   @override
   Future<List<ExamenModel>> searchExamenes({
     String? carreraId,
     List<int>? semestres,
     String? materiaId,
-    String? unidadAprendizaje,
+    String? areaFormacion,
     String? searchTerm,
   }) async {
     var query = supabaseClient.from('examen').select(_examenSelect);
@@ -92,6 +92,9 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
     if (carreraId != null) query = query.eq('materia.carrera_id', carreraId);
     if (semestres != null && semestres.isNotEmpty) {
       query = query.inFilter('materia.semestre', semestres);
+    }
+    if (areaFormacion != null) {
+      query = query.eq('materia.area_formacion_id', areaFormacion);
     }
     if (searchTerm != null && searchTerm.isNotEmpty) {
       query = query.ilike('materia.nombre', '%$searchTerm%');

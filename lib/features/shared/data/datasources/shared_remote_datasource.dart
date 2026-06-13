@@ -23,7 +23,7 @@ abstract class SharedRemoteDatasource {
     String? carreraId,
     List<int>? semestres,
     String? materiaId,
-    String? unidadAprendizaje,
+    String? areaFormacion,
     String? searchTerm,
   });
 

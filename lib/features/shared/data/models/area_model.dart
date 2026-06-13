@@ -23,6 +23,24 @@ class AreaFormacionModel extends AreaFormacion {
         activo: json['activo'] as bool,
       );
 
+  // Parsea una fila de SQLite desde la tabla areas_formacion.
+  // SQLite almacena booleanos como INTEGER (0/1).
+  factory AreaFormacionModel.fromMap(Map<String, dynamic> map) =>
+      AreaFormacionModel(
+        id: map['id'] as String,
+        nombre: map['nombre'] as String,
+        color: map['color'] as String,
+        activo: (map['activo'] as int) == 1,
+      );
+
+  // Serializa el modelo para inserción en la tabla areas_formacion de SQLite.
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'nombre': nombre,
+    'color': color,
+    'activo': activo ? 1 : 0,
+  };
+
   AreaFormacion toEntity() => AreaFormacion(
         id: id,
         nombre: nombre,

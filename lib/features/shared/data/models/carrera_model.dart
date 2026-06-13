@@ -24,6 +24,25 @@ class CarreraModel extends Carrera {
     activo: json['activo'] as bool,
   );
 
+  // Parsea una fila de SQLite desde la tabla carreras.
+  // SQLite almacena booleanos como INTEGER (0/1).
+  factory CarreraModel.fromMap(Map<String, dynamic> map) => CarreraModel(
+    id: map['id'] as String,
+    nombre: map['nombre'] as String,
+    abreviatura: map['abreviatura'] as String,
+    plan: map['plan'] as int,
+    activo: (map['activo'] as int) == 1,
+  );
+
+  // Serializa el modelo para inserción en la tabla carreras de SQLite.
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'nombre': nombre,
+    'abreviatura': abreviatura,
+    'plan': plan,
+    'activo': activo ? 1 : 0,
+  };
+
   // Convierte el modelo a la entidad de dominio Carrera.
   Carrera toEntity() => Carrera(
     id: id,

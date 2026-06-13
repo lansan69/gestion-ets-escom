@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: main.dart
+// USO: Punto de entrada de la aplicación. Inicializa el entorno
+//      (dotenv y Supabase) y registra el árbol de widgets con
+//      ProviderScope y el router de GoRouter.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/router/router.dart';

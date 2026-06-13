@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: career_card.dart
+// USO: Tarjeta de presentación de una carrera (no seleccionable).
+//      Muestra abreviatura, nombre y barra lateral de color.
+//      Consumida por OnBoardingSemestre como indicador de carrera.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';

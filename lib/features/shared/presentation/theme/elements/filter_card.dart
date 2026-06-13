@@ -1,3 +1,10 @@
+// ============================================================
+// NOMBRE: filter_card.dart
+// USO: Bottom sheet deslizable con chips de filtro para carrera,
+//      semestre y área de formación. Consumido por DashboardMaterias,
+//      ExploreMateriasCarrera, ExploreSemestres y
+//      ExploreMateriasSelection.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
@@ -24,6 +31,8 @@ class FilterCard extends StatefulWidget {
     this.scrollController,
   });
 
+  // Muestra el FilterCard como DraggableScrollableSheet. Recibe los filtros
+  // actuales y callbacks para notificar cambios al widget padre.
   static void show(
     BuildContext context, {
     required Set<String> selectedCarreras,
@@ -132,6 +141,7 @@ class _FilterCardState extends State<FilterCard>
     super.dispose();
   }
 
+  // Alterna la selección de un semestre; 'Todos' limpia las demás selecciones.
   void _toggleSemestre(String v) {
     setState(() {
       if (v == 'Todos') {
@@ -144,6 +154,7 @@ class _FilterCardState extends State<FilterCard>
     });
   }
 
+  // Alterna la selección de una carrera; 'Todas' limpia las demás selecciones.
   void _toggleCarrera(String v) {
     setState(() {
       if (v == 'Todas') {
@@ -156,6 +167,7 @@ class _FilterCardState extends State<FilterCard>
     });
   }
 
+  // Alterna la selección de un área; 'Todas' limpia las demás selecciones.
   void _toggleArea(String v) {
     setState(() {
       if (v == 'Todas') {
@@ -168,6 +180,7 @@ class _FilterCardState extends State<FilterCard>
     });
   }
 
+  // Notifica los filtros seleccionados al padre y cierra el bottom sheet.
   void _applyAndClose() {
     widget.onCarrerasChanged(_carrera);
     widget.onSemestresChanged(_semestres);

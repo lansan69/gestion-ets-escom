@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: explore_materias_carrera.dart
+// USO: Pantalla de exploración por carrera. Muestra tarjetas
+//      seleccionables de carreras y sincroniza la selección con
+//      el FilterCard. Ruta: /explorar/carrera.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_text_styles.dart';
@@ -24,6 +30,7 @@ class _ExploreMateriasCarreraState extends State<ExploreMateriasCarrera> {
   final _searchController = TextEditingController();
   int _selectedNavIndex = 0;
 
+  // Actualiza los sets de selección de tarjetas y filtros al hacer toggle en una carrera.
   void _onCareerToggle(String abrev, bool isSelected) {
     setState(() {
       if (isSelected) {
@@ -53,6 +60,7 @@ class _ExploreMateriasCarreraState extends State<ExploreMateriasCarrera> {
     });
   }
 
+  // Sincroniza el estado visual de las tarjetas cuando el filtro cambia desde FilterCard.
   void _syncCardsFromFilter() {
     if (_selectedCarrerasFilter.contains('Todas')) {
       _selectedCardAbbrevs = Set.from(_careers.map((c) => c.abrev));

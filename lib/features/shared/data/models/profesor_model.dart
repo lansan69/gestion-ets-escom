@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: profesor_model.dart
+// USO: Modelo de datos para Profesor. Parsea la respuesta de
+//      Supabase con JOIN de area_formacion y la convierte a la
+//      entidad de dominio.
+// ============================================================
 import 'package:gestion_ets_escom/features/shared/data/models/area_model.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/profesor.dart';
 
@@ -9,7 +15,7 @@ class ProfesorModel extends Profesor {
     super.segundoApellido,
     required super.correo,
     required super.activo,
-    required super.areaFormacion,
+    super.areaFormacion,
   });
 
   // Espera un objeto anidado 'area_formacion' de un JOIN en Supabase.
@@ -20,10 +26,13 @@ class ProfesorModel extends Profesor {
         segundoApellido: json['segundo_apellido'] as String?,
         correo: json['correo'] as String,
         activo: json['activo'] as bool,
-        areaFormacion: AreaFormacionModel.fromJson(
-            json['area_formacion'] as Map<String, dynamic>),
+        areaFormacion: json['area_formacion'] != null
+            ? AreaFormacionModel.fromJson(
+                json['area_formacion'] as Map<String, dynamic>)
+            : null,
       );
 
+  // Convierte el modelo a la entidad de dominio Profesor.
   Profesor toEntity() => Profesor(
         id: id,
         nombre: nombre,

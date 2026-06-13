@@ -1,3 +1,10 @@
+// ============================================================
+// NOMBRE: individual_materia_view.dart
+// USO: Vista de detalle de un examen ETS. Recibe los datos
+//      a través de GoRouter extra (MateriaData) y muestra la
+//      tarjeta expandida con acciones de calendario y recordatorio.
+//      Ruta: /materia.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';

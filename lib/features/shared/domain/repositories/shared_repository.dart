@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: shared_repository.dart
+// USO: Contrato abstracto del repositorio compartido. Define
+//      las operaciones de catálogos y búsqueda de exámenes.
+//      Implementado por SharedRepositoryImpl.
+// ============================================================
 import 'package:dartz/dartz.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
@@ -18,7 +24,7 @@ abstract class SharedRepository {
   Future<Either<Failure, List<Examen>>> getExamenes();
   Future<Either<Failure, List<Examen>>> searchExamenes({
     String? carreraId,
-    int? semestre,
+    List<int>? semestres,
     String? materiaId,
     String? unidadAprendizaje,
     String? searchTerm,

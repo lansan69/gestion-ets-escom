@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: admin_repository_impl.dart
+// USO: Implementación del repositorio admin. Coordina el
+//      datasource y mapea errores a Failures. Pendiente de
+//      implementar los métodos CRUD de exámenes.
+// ============================================================
 import 'package:dartz/dartz.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
 import 'package:gestion_ets_escom/features/admin/domain/repositories/admin_repository.dart';

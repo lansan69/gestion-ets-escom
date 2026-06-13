@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: app_buttons.dart
+// USO: Botones reutilizables de la aplicación (primario,
+//      secundario, icono-tile y animación de presión). Consumidos
+//      por todas las pantallas de la app.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 

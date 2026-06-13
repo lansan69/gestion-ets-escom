@@ -1,3 +1,8 @@
+// ============================================================
+// NOMBRE: salon.dart
+// USO: Entidad de dominio que representa un salón de examen.
+//      Consumida por Examen y los datasources de búsqueda.
+// ============================================================
 import 'package:equatable/equatable.dart';
 
 class Salon extends Equatable {

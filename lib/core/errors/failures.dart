@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: failures.dart
+// USO: Clases de fallo del dominio (Either<Failure, T>). Usadas
+//      por los repositorios y casos de uso para representar
+//      errores de servidor o caché de forma tipada.
+// ============================================================
 import 'package:equatable/equatable.dart';
 
 abstract class Failure extends Equatable {

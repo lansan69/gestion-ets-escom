@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: admin_remote_datasource.dart
+// USO: Contrato abstracto del datasource admin. Define el CRUD
+//      de exámenes contra Supabase. Implementado por
+//      AdminRemoteDatasourceImpl.
+// ============================================================
 import 'package:gestion_ets_escom/features/shared/data/models/examen_model.dart';
 
 abstract class AdminRemoteDatasource {

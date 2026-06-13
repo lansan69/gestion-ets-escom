@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: materia_model.dart
+// USO: Modelo de datos para Materia. Parsea la respuesta de
+//      Supabase con JOINs de carrera y area_formacion y la
+//      convierte a la entidad de dominio.
+// ============================================================
 import 'package:gestion_ets_escom/features/shared/data/models/area_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/carrera_model.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
@@ -9,20 +15,23 @@ class MateriaModel extends Materia {
     required super.carrera,
     required super.semestre,
     required super.activo,
-    required super.areaFormacion,
+    super.areaFormacion,
   });
 
-  // Espera objetos anidados 'carrera' y 'area_formacion' de un JOIN en Supabase.
+  // Espera objetos anidados 'carrera' y opcionalmente 'area_formacion' de un JOIN en Supabase.
   factory MateriaModel.fromJson(Map<String, dynamic> json) => MateriaModel(
         id: json['id'] as String,
         nombre: json['nombre'] as String,
         carrera: CarreraModel.fromJson(json['carrera'] as Map<String, dynamic>),
         semestre: json['semestre'] as int,
         activo: json['activo'] as bool,
-        areaFormacion: AreaFormacionModel.fromJson(
-            json['area_formacion'] as Map<String, dynamic>),
+        areaFormacion: json['area_formacion'] != null
+            ? AreaFormacionModel.fromJson(
+                json['area_formacion'] as Map<String, dynamic>)
+            : null,
       );
 
+  // Convierte el modelo a la entidad de dominio Materia.
   Materia toEntity() => Materia(
         id: id,
         nombre: nombre,

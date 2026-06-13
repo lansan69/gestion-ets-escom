@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: administrativo.dart
+// USO: Entidad de dominio que representa a un usuario del panel
+//      de administración. Consumida por el flujo de autenticación
+//      (LoginUseCase, AuthRepository).
+// ============================================================
 import 'package:equatable/equatable.dart';
 
 class Administrativo extends Equatable {

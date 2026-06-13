@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: background_pattern_painter.dart
+// USO: CustomPainter que dibuja el fondo decorativo azul con
+//      círculos y puntos. Consumido por AppShell, WelcomePage
+//      y las pantallas de onboarding.
+// ============================================================
 import 'package:flutter/material.dart';
 
 class BackgroundPatternPainter extends CustomPainter {

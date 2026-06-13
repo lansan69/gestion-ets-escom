@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: onboarding_carrera.dart
+// USO: Paso 1 del onboarding. Permite al usuario seleccionar su
+//      carrera de la lista cargada desde Supabase. Navega a
+//      onboarding_semestre al continuar. Ruta: /onboarding/carrera.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
@@ -24,7 +30,7 @@ class OnBoardingCarrera extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Ancho dinámico de los botones basado en el ancho de la pantalla.
     final double buttonWidth = MediaQuery.of(context).size.width * 0.9;
-
+  
     // Observa el provider que carga la lista de carreras de forma asíncrona.
     final carrerasAsync = ref.watch(carrerasProvider);
     // Observa el provider que almacena la carrera seleccionada por el usuario.

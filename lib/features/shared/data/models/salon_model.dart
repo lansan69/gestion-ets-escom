@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: salon_model.dart
+// USO: Modelo de datos para Salon. Parsea la respuesta de
+//      Supabase y la convierte a la entidad de dominio.
+//      Consumido por SharedRemoteDatasourceImpl y ExamenModel.
+// ============================================================
 import 'package:gestion_ets_escom/features/shared/domain/entities/salon.dart';
 
 class SalonModel extends Salon {
@@ -10,6 +16,7 @@ class SalonModel extends Salon {
     required super.activo,
   });
 
+  // Parsea el JSON devuelto por Supabase desde la tabla salon.
   factory SalonModel.fromJson(Map<String, dynamic> json) => SalonModel(
         id: json['id'] as String,
         edificio: json['edificio'] as int,
@@ -19,6 +26,7 @@ class SalonModel extends Salon {
         activo: json['activo'] as bool,
       );
 
+  // Convierte el modelo a la entidad de dominio Salon.
   Salon toEntity() => Salon(
         id: id,
         edificio: edificio,

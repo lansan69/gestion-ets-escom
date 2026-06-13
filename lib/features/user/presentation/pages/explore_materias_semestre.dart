@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: explore_materias_semestre.dart
+// USO: Pantalla de exploración por semestre. Muestra tarjetas
+//      seleccionables de semestres y sincroniza la selección con
+//      el FilterCard. Ruta: /explorar/semestre.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_text_styles.dart';
@@ -30,6 +36,7 @@ class _ExploreSemestresState extends State<ExploreSemestres> {
     super.dispose();
   }
 
+  // Agrega o quita un semestre de los sets de selección al hacer toggle.
   void _onCardToggle(int numero, bool isSelected) {
     setState(() {
       if (isSelected) {

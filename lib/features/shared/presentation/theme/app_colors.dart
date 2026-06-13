@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: app_colors.dart
+// USO: Paleta de colores centralizada de la aplicación. Define
+//      constantes para todos los colores usados en widgets,
+//      temas y estados. Consumido por toda la capa de presentación.
+// ============================================================
 import 'package:flutter/material.dart';
 
 class AppColors {

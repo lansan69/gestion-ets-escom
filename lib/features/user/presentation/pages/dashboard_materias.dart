@@ -1,4 +1,13 @@
+// ============================================================
+// NOMBRE: dashboard_materias.dart
+// USO: Pantalla principal del usuario. Muestra la lista de
+//      exámenes ETS con filtros y barra de búsqueda. Navega a
+//      IndividualMateriaView al tocar una tarjeta. Ruta: /inicio.
+// ============================================================
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gestion_ets_escom/core/utils/date_formatter.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/examenes_providers.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_text_styles.dart';
@@ -10,137 +19,43 @@ import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/ca
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/filter_card.dart';
 import 'package:gestion_ets_escom/features/user/presentation/pages/individual_materia_view.dart';
 
-Color _barColorForStatus(EtsStatus status) => switch (status) {
-  EtsStatus.today => AppColors.statusTodayForeground,
-  EtsStatus.tomorrow => AppColors.statusTomorrowForeground,
-  EtsStatus.soon => AppColors.statusSoonForeground,
-  EtsStatus.far => AppColors.statusFarForeground,
-};
-
-class DashboardMaterias extends StatefulWidget {
-  @override
-  State<DashboardMaterias> createState() => _DashboardMateriasState();
+EtsStatus _statusForDate(DateTime fecha) {
+  final today = DateTime.now();
+  final examDay = DateTime(fecha.year, fecha.month, fecha.day);
+  final todayDay = DateTime(today.year, today.month, today.day);
+  final diff = examDay.difference(todayDay).inDays;
+  if (diff == 0) return EtsStatus.today;
+  if (diff == 1) return EtsStatus.tomorrow;
+  if (diff <= 7) return EtsStatus.soon;
+  return EtsStatus.far;
 }
 
-class _DashboardMateriasState extends State<DashboardMaterias> {
+Color _barColorForStatus(EtsStatus status) => switch (status) {
+  EtsStatus.today    => AppColors.statusTodayForeground,
+  EtsStatus.tomorrow => AppColors.statusTomorrowForeground,
+  EtsStatus.soon     => AppColors.statusSoonForeground,
+  EtsStatus.far      => AppColors.statusFarForeground,
+};
+
+Color? _colorFromHex(String? hex) {
+  if (hex == null) return null;
+  final h = hex.replaceAll('#', '').trim();
+  if (h.length != 6) return null;
+  return Color(int.parse('FF$h', radix: 16));
+}
+
+class DashboardMaterias extends ConsumerStatefulWidget {
+  const DashboardMaterias({super.key});
+  @override
+  ConsumerState<DashboardMaterias> createState() => _DashboardMateriasState();
+}
+
+class _DashboardMateriasState extends ConsumerState<DashboardMaterias> {
   Set<String> _selectedCarreras = {'ISC'};
   Set<String> _selectedSemestres = {'5', '7', '9'};
   Set<String> _selectedArea = {'Todas'};
 
   final _searchController = TextEditingController();
-
-  static const List<_MateriaStub> _materias = [
-    _MateriaStub(
-      'Cálculo Diferencial e Integral',
-      'Dr. Ramírez Torres',
-      5,
-      302,
-      '5 jun 2026',
-      '08:00',
-      'Matutino',
-      EtsStatus.today,
-    ),
-    _MateriaStub(
-      'Cálculo Diferencial e Integral',
-      'Dr. Ramírez Torres',
-      5,
-      302,
-      '5 jun 2026',
-      '08:00',
-      'Matutino',
-      EtsStatus.today,
-    ),
-    _MateriaStub(
-      'Estructuras de Datos',
-      'M.C. López Hernández',
-      5,
-      201,
-      '6 jun 2026',
-      '10:00',
-      'Matutino',
-      EtsStatus.tomorrow,
-    ),
-    _MateriaStub(
-      'Álgebra Lineal',
-      'Dra. Morales Reyes',
-      5,
-      204,
-      '8 jun 2026',
-      '09:00',
-      'Matutino',
-      EtsStatus.soon,
-    ),
-    _MateriaStub(
-      'Probabilidad y Estadística',
-      'M.C. Fuentes Nava',
-      5,
-      310,
-      '9 jun 2026',
-      '11:00',
-      'Matutino',
-      EtsStatus.soon,
-    ),
-    _MateriaStub(
-      'Programación Orientada a Objetos',
-      'Ing. García Mendoza',
-      7,
-      405,
-      '15 jun 2026',
-      '08:00',
-      'Matutino',
-      EtsStatus.far,
-    ),
-    _MateriaStub(
-      'Sistemas Operativos',
-      'Dr. Vázquez Ruiz',
-      7,
-      108,
-      '17 jun 2026',
-      '16:00',
-      'Vespertino',
-      EtsStatus.far,
-    ),
-    _MateriaStub(
-      'Cálculo Diferencial e Integral',
-      'Dr. Ramírez Torres',
-      5,
-      302,
-      '5 jun 2026',
-      '08:00',
-      'Matutino',
-      EtsStatus.today,
-    ),
-    _MateriaStub(
-      'Cálculo Diferencial e Integral',
-      'Dr. Ramírez Torres',
-      5,
-      302,
-      '5 jun 2026',
-      '08:00',
-      'Matutino',
-      EtsStatus.today,
-    ),
-    _MateriaStub(
-      'Cálculo Diferencial e Integral',
-      'Dr. Ramírez Torres',
-      5,
-      302,
-      '5 jun 2026',
-      '08:00',
-      'Matutino',
-      EtsStatus.today,
-    ),
-    _MateriaStub(
-      'Redes de Computadoras',
-      'M.C. Pérez Castro',
-      9,
-      310,
-      '20 jun 2026',
-      '12:00',
-      'Matutino',
-      EtsStatus.far,
-    ),
-  ];
 
   @override
   void dispose() {
@@ -150,6 +65,7 @@ class _DashboardMateriasState extends State<DashboardMaterias> {
 
   @override
   Widget build(BuildContext context) {
+    final examenesAsync = ref.watch(examenesProvider);
     final topOffset = MediaQuery.of(context).padding.top + 10;
 
     return Container(
@@ -217,45 +133,73 @@ class _DashboardMateriasState extends State<DashboardMaterias> {
                             ),
                           ),
                         ),
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final materia = _materias[index];
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 6,
+                        ...examenesAsync.when(
+                          loading: () => [
+                            const SliverFillRemaining(
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                          ],
+                          error: (e, _) => [
+                            const SliverFillRemaining(
+                              child: Center(
+                                child: Text('Error al cargar exámenes'),
                               ),
-                              child: CardExamenMateria(
-                                nombreMateria: materia.nombre,
-                                profesor: materia.profesor,
-                                semestre: materia.semestre,
-                                salon: materia.salon,
-                                fecha: materia.fecha,
-                                hora: materia.hora,
-                                turno: materia.turno,
-                                status: materia.status,
-                                onTap: () => context.push(
-                                  '/materia',
-                                  extra: MateriaData(
-                                    nombre: materia.nombre,
-                                    profesor: materia.profesor,
-                                    semestre: materia.semestre,
-                                    salon: materia.salon,
-                                    fecha: materia.fecha,
-                                    hora: materia.hora,
-                                    turno: materia.turno,
-                                    status: materia.status,
-                                    barColor: _barColorForStatus(materia.status),
+                            ),
+                          ],
+                          data: (examenes) => [
+                            SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                final examen = examenes[index];
+                                final status = _statusForDate(examen.fecha);
+                                final areaColor = _colorFromHex(
+                                  examen.materia.areaFormacion?.color,
+                                );
+                                final barColor =
+                                    areaColor ?? _barColorForStatus(status);
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 6,
                                   ),
-                                ),
-                              ),
-                            );
-                          }, childCount: _materias.length),
+                                  child: CardExamenMateria(
+                                    nombreMateria: examen.materia.nombre,
+                                    profesor: examen.profesor.nombreCompleto,
+                                    semestre: examen.materia.semestre,
+                                    salon: examen.salon.numeroSalon,
+                                    fecha: DateFormatter.formatDate(examen.fecha),
+                                    hora: examen.hora,
+                                    turno: examen.turno.name[0].toUpperCase() +
+                                        examen.turno.name.substring(1),
+                                    status: status,
+                                    barColor: areaColor,
+                                    onTap: () => context.push(
+                                      '/materia',
+                                      extra: MateriaData(
+                                        nombre: examen.materia.nombre,
+                                        profesor: examen.profesor.nombreCompleto,
+                                        semestre: examen.materia.semestre,
+                                        salon: examen.salon.numeroSalon,
+                                        fecha: DateFormatter.formatDate(
+                                          examen.fecha,
+                                        ),
+                                        hora: examen.hora,
+                                        turno: examen.turno.name[0]
+                                                .toUpperCase() +
+                                            examen.turno.name.substring(1),
+                                        status: status,
+                                        barColor: barColor,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }, childCount: examenes.length),
+                            ),
+                            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                          ],
                         ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
                       ],
                     ),
                   ),
@@ -274,26 +218,4 @@ class _DashboardMateriasState extends State<DashboardMaterias> {
       ),
     );
   }
-}
-
-class _MateriaStub {
-  final String nombre;
-  final String profesor;
-  final int semestre;
-  final int salon;
-  final String fecha;
-  final String hora;
-  final String turno;
-  final EtsStatus status;
-
-  const _MateriaStub(
-    this.nombre,
-    this.profesor,
-    this.semestre,
-    this.salon,
-    this.fecha,
-    this.hora,
-    this.turno,
-    this.status,
-  );
 }

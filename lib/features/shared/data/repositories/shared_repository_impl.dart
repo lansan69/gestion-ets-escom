@@ -5,6 +5,7 @@
 // ============================================================
 
 import 'package:dartz/dartz.dart';
+import 'package:flutter/foundation.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
@@ -89,11 +90,11 @@ class SharedRepositoryImpl implements SharedRepository {
     }
   }
 
-  // Busca exámenes con filtros opcionales de carrera, semestre y materia.
+  // Busca exámenes con filtros opcionales de carrera, semestres y materia.
   @override
   Future<Either<Failure, List<Examen>>> searchExamenes({
     String? carreraId,
-    int? semestre,
+    List<int>? semestres,
     String? materiaId,
     String? unidadAprendizaje,
     String? searchTerm,
@@ -101,7 +102,7 @@ class SharedRepositoryImpl implements SharedRepository {
     try {
       final models = await datasource.searchExamenes(
         carreraId: carreraId,
-        semestre: semestre,
+        semestres: semestres,
         materiaId: materiaId,
         unidadAprendizaje: unidadAprendizaje,
         searchTerm: searchTerm,
@@ -109,8 +110,11 @@ class SharedRepositoryImpl implements SharedRepository {
       return Right(models.map((m) => m.toEntity()).toList());
     } on PostgrestException catch (e) {
       return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(const ServerFailure('Ocurrió un error inesperado'));
+    } catch (e, st) {
+      debugPrint('🔴 RAW ERROR: $e');
+      debugPrint('🔴 TYPE: ${e.runtimeType}');
+      debugPrint('🔴 STACKTRACE: $st');
+      return Left(ServerFailure(e.toString()));
     }
   }
 

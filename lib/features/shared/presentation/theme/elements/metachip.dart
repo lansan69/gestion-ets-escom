@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: metachip.dart
+// USO: Widget pequeño de icono + texto para mostrar metadatos
+//      de un examen (fecha, salón, hora, profesor). Consumido
+//      por CardExamenMateriaExpanded.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 

@@ -27,22 +27,29 @@ final selectedCarreraProvider = NotifierProvider<SelectedCarreraNotifier, String
   SelectedCarreraNotifier.new,
 );
 
-// Notifier que almacena el número de semestre actualmente seleccionado.
-// El estado inicial es null (ningún semestre seleccionado todavía).
-class SelectedSemestreNotifier extends Notifier<int?> {
+// Notifier que almacena la lista de semestres seleccionados (máximo 3).
+// El estado inicial es una lista vacía (ningún semestre seleccionado todavía).
+class SelectedSemestresNotifier extends Notifier<List<int>> {
   @override
-  int? build() => null;
+  List<int> build() => [];
 
-  // Establece el semestre seleccionado (número entero, del 1 al 9).
-  void select(int semestre) => state = semestre;
+  // Agrega un semestre si no supera el límite de 3.
+  void add(int semestre) {
+    if (state.length < 3 && !state.contains(semestre)) {
+      state = [...state, semestre];
+    }
+  }
 
-  // Limpia la selección, volviendo al estado inicial sin semestre.
-  void clear() => state = null;
+  // Quita un semestre de la lista.
+  void remove(int semestre) => state = state.where((s) => s != semestre).toList();
+
+  // Limpia toda la selección.
+  void clear() => state = [];
 }
 
-// Provider que expone el Notifier de semestre seleccionado.
+// Provider que expone el Notifier de semestres seleccionados.
 // Consumido por OnboardingSemestre y por la lógica de navegación del onboarding.
-final selectedSemestreProvider =
-    NotifierProvider<SelectedSemestreNotifier, int?>(
-      SelectedSemestreNotifier.new,
+final selectedSemestresProvider =
+    NotifierProvider<SelectedSemestresNotifier, List<int>>(
+      SelectedSemestresNotifier.new,
     );

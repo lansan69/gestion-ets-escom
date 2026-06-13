@@ -1,3 +1,8 @@
+// ============================================================
+// NOMBRE: auth_repository_impl.dart
+// USO: Implementación del repositorio de autenticación admin.
+//      Pendiente de implementar login y logout con Supabase Auth.
+// ============================================================
 import 'package:dartz/dartz.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
 import 'package:gestion_ets_escom/features/admin/domain/entities/administrativo.dart';

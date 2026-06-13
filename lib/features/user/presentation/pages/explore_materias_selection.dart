@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: explore_materias_selection.dart
+// USO: Pantalla de resultados de exploración. Muestra la lista
+//      de exámenes filtrada por la selección de carrera y semestre
+//      elegida en los pasos anteriores. Ruta: /explorar/seleccion.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_text_styles.dart';

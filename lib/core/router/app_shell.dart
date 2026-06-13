@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: app_shell.dart
+// USO: Shell persistente que envuelve las rutas principales con
+//      AppBar y BottomNavigationBar. Consumido como builder del
+//      ShellRoute en router.dart.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
@@ -36,11 +42,13 @@ class AppShell extends StatelessWidget {
     ),
   ];
 
+  // Devuelve el índice del tab activo según el path actual.
   int _selectedIndex(String location) {
     final idx = _tabs.indexWhere((t) => location.startsWith(t.path));
     return idx >= 0 ? idx : 0;
   }
 
+  // Resuelve el título del AppBar según la ruta activa y los datos extra pasados.
   String _title(String location, Object? extra) {
     if (location.startsWith('/inicio')) return 'Mis Materias';
     if (location.startsWith('/explorar')) return 'Explorar';

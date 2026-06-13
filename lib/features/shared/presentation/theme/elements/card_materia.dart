@@ -1,3 +1,10 @@
+// ============================================================
+// NOMBRE: card_materia.dart
+// USO: Tarjeta compacta para mostrar un examen ETS en la lista
+//      del dashboard. Incluye barra lateral de color según estado
+//      cronológico. Consumida por DashboardMaterias y
+//      ExploreMateriasSelection.
+// ============================================================
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -17,6 +24,7 @@ class CardExamenMateria extends StatelessWidget {
   final File? documentoProyecto;
   final String notas;
   final EtsStatus status;
+  final Color? barColor;
   final VoidCallback? onTap;
 
   const CardExamenMateria({
@@ -32,10 +40,11 @@ class CardExamenMateria extends StatelessWidget {
     this.documentoProyecto,
     this.notas = '',
     required this.status,
+    this.barColor,
     this.onTap,
   });
 
-  Color get _barColor => switch (status) {
+  Color get _barColor => barColor ?? switch (status) {
     EtsStatus.today    => AppColors.statusTodayForeground,
     EtsStatus.tomorrow => AppColors.statusTomorrowForeground,
     EtsStatus.soon     => AppColors.statusSoonForeground,

@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: card_materia_expanded.dart
+// USO: Tarjeta expandida con todos los detalles de un examen
+//      ETS (horario, salón, profesor, documentos, notas).
+//      Consumida por IndividualMateriaView.
+// ============================================================
 import 'dart:io';
 
 import 'package:flutter/material.dart';

@@ -1,3 +1,8 @@
+// ============================================================
+// NOMBRE: colores_app.dart
+// USO: Archivo duplicado de app_colors.dart. Mantener sincronizado
+//      con app_colors.dart o migrar todos los imports a ese archivo.
+// ============================================================
 import 'package:flutter/material.dart';
 
 class AppColors {

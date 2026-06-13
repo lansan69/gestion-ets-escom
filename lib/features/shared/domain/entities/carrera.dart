@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: carrera.dart
+// USO: Entidad de dominio que representa una carrera del ESCOM.
+//      Consumida por Materia, SharedRepository y los providers
+//      de carrera.
+// ============================================================
 import 'package:equatable/equatable.dart';
 
 class Carrera extends Equatable {

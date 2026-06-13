@@ -10,6 +10,7 @@ class AreaFormacionModel extends AreaFormacion {
   const AreaFormacionModel({
     required super.id,
     required super.nombre,
+    required super.color,
     required super.activo,
   });
 
@@ -18,12 +19,14 @@ class AreaFormacionModel extends AreaFormacion {
       AreaFormacionModel(
         id: json['id'] as String,
         nombre: json['nombre'] as String,
+        color: json['color'] as String,
         activo: json['activo'] as bool,
       );
 
   AreaFormacion toEntity() => AreaFormacion(
         id: id,
         nombre: nombre,
+        color: color,
         activo: activo,
       );
 }

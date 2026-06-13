@@ -1,4 +1,9 @@
-
+// ============================================================
+// NOMBRE: pdf_chip.dart
+// USO: Widget que muestra el nombre de un archivo PDF con icono
+//      de descarga. Si no hay archivo, no renderiza nada.
+//      Consumido por CardExamenMateriaExpanded.
+// ============================================================
 import 'dart:io';
 
 import 'package:flutter/material.dart';

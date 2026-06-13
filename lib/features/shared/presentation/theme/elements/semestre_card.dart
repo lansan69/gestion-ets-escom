@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: semestre_card.dart
+// USO: Tarjeta de semestre con estado seleccionable (toggle).
+//      Soporta límite de selecciones vía canSelect. Consumida
+//      por OnBoardingSemestre y ExploreSemestres.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
@@ -41,6 +47,7 @@ class SemestreCardState extends State<SemestreCard> {
     setState(() => _selected = color != null);
   }
 
+  // Alterna el estado seleccionado respetando el límite impuesto por canSelect.
   void _toggle() {
     if (!_selected && (widget.canSelect?.call() == false)) return;
     setState(() => _selected = !_selected);

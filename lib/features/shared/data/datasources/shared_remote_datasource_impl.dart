@@ -13,17 +13,19 @@ import 'package:gestion_ets_escom/features/shared/data/models/salon_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Fragmento de SELECT reutilizado para examen con sus relaciones completas.
+// materia!inner garantiza INNER JOIN: filas sin materia coincidente son excluidas,
+// evitando que los filtros por carrera/semestre devuelvan materia:null.
 const _examenSelect = '''
   *,
-  materia (
+  materia!inner (
     id, nombre, semestre, activo,
     carrera ( id, nombre, abreviatura, plan, activo ),
-    area_formacion ( id, nombre, activo )
+    area_formacion ( id, nombre, color, activo )
   ),
   salon ( id, edificio, piso, numero_salon, etiqueta_salon, activo ),
   profesor (
     id, nombre, primer_apellido, segundo_apellido, correo, activo,
-    area_formacion ( id, nombre, activo )
+    area_formacion ( id, nombre, color, activo )
   )
 ''';
 
@@ -45,7 +47,7 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
     final response = await supabaseClient
         .from('materia')
         .select(
-          'id, nombre, semestre, activo, carrera ( id, nombre, abreviatura, plan, activo ), area_formacion ( id, nombre, activo )',
+          'id, nombre, semestre, activo, carrera ( id, nombre, abreviatura, plan, activo ), area_formacion ( id, nombre, color, activo )',
         )
         .eq('carrera_id', carreraId);
     return response.map((json) => MateriaModel.fromJson(json)).toList();
@@ -63,7 +65,7 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
   Future<List<ProfesorModel>> getProfesores() async {
     final response = await supabaseClient
         .from('profesor')
-        .select('*, area_formacion ( id, nombre, activo )');
+        .select('*, area_formacion ( id, nombre, color, activo )');
     return response.map((json) => ProfesorModel.fromJson(json)).toList();
   }
 
@@ -75,11 +77,11 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
     return response.map((json) => ExamenModel.fromJson(json)).toList();
   }
 
-  // Busca exámenes aplicando filtros opcionales sobre materia, carrera y semestre.
+  // Busca exámenes aplicando filtros opcionales sobre materia, carrera y semestres.
   @override
   Future<List<ExamenModel>> searchExamenes({
     String? carreraId,
-    int? semestre,
+    List<int>? semestres,
     String? materiaId,
     String? unidadAprendizaje,
     String? searchTerm,
@@ -88,7 +90,9 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
 
     if (materiaId != null) query = query.eq('materia_id', materiaId);
     if (carreraId != null) query = query.eq('materia.carrera_id', carreraId);
-    if (semestre != null) query = query.eq('materia.semestre', semestre);
+    if (semestres != null && semestres.isNotEmpty) {
+      query = query.inFilter('materia.semestre', semestres);
+    }
     if (searchTerm != null && searchTerm.isNotEmpty) {
       query = query.ilike('materia.nombre', '%$searchTerm%');
     }

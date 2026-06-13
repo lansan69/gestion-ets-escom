@@ -1,3 +1,10 @@
+// ============================================================
+// NOMBRE: app_search_bar.dart
+// USO: Barra de búsqueda con botones de búsqueda y filtro
+//      animados. Consumida por DashboardMaterias,
+//      ExploreMateriasCarrera, ExploreSemestres y
+//      ExploreMateriasSelection.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 

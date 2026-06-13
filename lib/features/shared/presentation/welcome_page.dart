@@ -1,9 +1,16 @@
+// ============================================================
+// NOMBRE: welcome_page.dart
+// USO: Pantalla de bienvenida de la app. Pre-carga carreras y
+//      exámenes en background y ofrece acceso al onboarding o
+//      al panel de gestión. Ruta: /bienvenida.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/examenes_providers.dart';
 import 'package:go_router/go_router.dart';
 
 class WelcomePage extends ConsumerWidget {
@@ -12,6 +19,7 @@ class WelcomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(carrerasProvider);
+  
     const double avatarRadius = 40;
     final double buttonWidth = MediaQuery.of(context).size.width * 0.9;
 

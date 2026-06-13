@@ -1,3 +1,11 @@
+// ============================================================
+// NOMBRE: log_model.dart
+// USO: Modelo de datos para los registros de auditoría del panel
+//      admin. Almacena acción, tabla afectada y snapshots JSON
+//      de los datos anteriores y nuevos. Consumido por el módulo
+//      de logs del panel de gestión.
+// ============================================================
+
 class LogModel {
   final int id;
   final int administrativoId;
@@ -19,6 +27,7 @@ class LogModel {
     required this.creadoEn,
   });
 
+  // Parsea el JSON devuelto por Supabase desde la tabla logs.
   factory LogModel.fromJson(Map<String, dynamic> json) => LogModel(
         id: json['id'] as int,
         administrativoId: json['administrativo_id'] as int,

@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: app_text_styles.dart
+// USO: Estilos de texto reutilizables de la aplicación. Define
+//      variantes para encabezados, cuerpo y captions usando los
+//      colores de AppColors. Consumido por widgets de presentación.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 

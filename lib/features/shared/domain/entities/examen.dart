@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: examen.dart
+// USO: Entidad de dominio central del sistema. Representa un
+//      examen ETS con sus relaciones (materia, salón, profesor).
+//      Consumida por los providers y widgets de la feature user.
+// ============================================================
 import 'package:equatable/equatable.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/profesor.dart';

@@ -1,7 +1,11 @@
+// ============================================================
+// NOMBRE: examen_model.dart
+// USO: Modelo de datos para Examen. Parsea la respuesta de
+//      Supabase con JOINs anidados (materia→carrera, salon,
+//      profesor) y la convierte a la entidad de dominio.
+// ============================================================
 
-
-// Expects a Supabase response with nested materia(carrera), salon, and profesor
-// objects from a multi-level JOIN.
+// Espera objetos anidados materia(carrera), salon y profesor de un JOIN multinivel.
 import 'package:gestion_ets_escom/features/shared/data/models/materia_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/profesor_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/salon_model.dart';
@@ -25,6 +29,7 @@ class ExamenModel extends Examen {
     super.actualizadoEn,
   });
 
+  // Parsea el JSON de Supabase y construye los sub-modelos anidados.
   factory ExamenModel.fromJson(Map<String, dynamic> json) => ExamenModel(
         id: json['id'] as String,
         materia:
@@ -47,6 +52,7 @@ class ExamenModel extends Examen {
             : null,
       );
 
+  // Convierte el modelo a la entidad de dominio Examen.
   Examen toEntity() => Examen(
         id: id,
         materia: materia,

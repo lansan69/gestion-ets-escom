@@ -1,3 +1,9 @@
+// ============================================================
+// NOMBRE: router.dart
+// USO: Define el GoRouter principal de la aplicación con todas
+//      las rutas (onboarding, shell con tabs, detalle de materia).
+//      Registrado en main.dart mediante MaterialApp.router.
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gestion_ets_escom/core/router/app_shell.dart';

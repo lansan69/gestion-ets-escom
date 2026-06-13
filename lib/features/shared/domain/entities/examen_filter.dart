@@ -8,14 +8,14 @@ class ExamenFilter {
   final String? carreraId;
   final List<int> semestres;
   final String? materiaId;
-  final String? unidadAprendizaje;
+  final String? areaFormacion;
   final String? searchTerm;
 
   const ExamenFilter({
     this.carreraId,
     this.semestres = const [],
     this.materiaId,
-    this.unidadAprendizaje,
+    this.areaFormacion,
     this.searchTerm,
   });
 
@@ -24,13 +24,13 @@ class ExamenFilter {
     String? carreraId,
     List<int>? semestres,
     String? materiaId,
-    String? unidadAprendizaje,
+    String? areaFormacion,
     String? searchTerm,
   }) => ExamenFilter(
     carreraId: carreraId ?? this.carreraId,
     semestres: semestres ?? this.semestres,
     materiaId: materiaId ?? this.materiaId,
-    unidadAprendizaje: unidadAprendizaje ?? this.unidadAprendizaje,
+    areaFormacion: areaFormacion ?? this.areaFormacion,
     searchTerm: searchTerm ?? this.searchTerm,
   );
 }

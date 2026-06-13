@@ -1,57 +1,107 @@
 // ============================================================
 // NOMBRE: examenes_providers.dart
-// USO: Providers para la búsqueda y filtrado de exámenes ETS.
-//      Expone el Notifier de filtros, el caso de uso y el
-//      FutureProvider reactivo. Consumidos por DashboardMaterias
-//      y ExploreMateriasSelection.
+// USO: Providers para la carga y filtrado en memoria de exámenes ETS.
+//      _allExamenesProvider carga con estrategia offline-first y se
+//      refresca cuando cambia la selección de carrera o semestres.
+//      examenesProvider aplica los filtros activos en memoria sobre
+//      esa lista. areasFormacionProvider extrae áreas únicas de los
+//      exámenes cargados para alimentar los chips de FilterCard.
+//      Consumido por ExploreExams.
 // ============================================================
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/providers/core_providers.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/area_formacion.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
-import 'package:gestion_ets_escom/features/shared/domain/usecases/examen/search_examenes.dart';
+import 'package:gestion_ets_escom/features/shared/domain/usecases/examen/get_examenes.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/filter_providers.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/selection_providers.dart';
 
-// Notifier que gestiona el estado del filtro activo de exámenes.
-// Consumido por examenesProvider para disparar nuevas consultas.
-class ExamenFilterNotifier extends Notifier<ExamenFilter> {
-  @override
-  ExamenFilter build() {
-    final carreraId = ref.watch(selectedCarreraProvider);
-    final semestres = ref.watch(selectedSemestresProvider);
-    return ExamenFilter(carreraId: carreraId, semestres: semestres);
-  }
-
-  void setCarrera(String? id) => state = state.copyWith(carreraId: id);
-  void setSemestres(List<int> semestres) => state = state.copyWith(semestres: semestres);
-  void clearSemestres() => state = state.copyWith(semestres: []);
-  void setMateria(String? id) => state = state.copyWith(materiaId: id);
-  void setSearchTerm(String? term) => state = state.copyWith(searchTerm: term);
-  void clear() => state = const ExamenFilter();
-}
-
-final examenFilterProvider =
-    NotifierProvider<ExamenFilterNotifier, ExamenFilter>(
-      ExamenFilterNotifier.new,
-    );
-
-// ── Use case ──────────────────────────────
-// Provider del caso de uso SearchExamenes. Consumido únicamente por examenesProvider.
-final buscarExamenesProvider = Provider<SearchExamenes>(
-  (ref) => SearchExamenes(ref.read(sharedRepositoryProvider)),
+// Provider del caso de uso. Consumido únicamente por _allExamenesProvider.
+final getExamenesProvider = Provider<GetExamenes>(
+  (ref) => GetExamenes(ref.read(sharedRepositoryProvider)),
 );
 
-// ── Async data ────────────────────────────
-// Se usa ref.watch para que el provider se recalcule al cambiar el filtro activo.
-final examenesProvider = FutureProvider<List<Examen>>((ref) async {
-  final filter = ref.watch(examenFilterProvider);
+// Carga offline-first de exámenes filtrada por la selección activa de onboarding.
+// Se reconstruye automáticamente cuando el usuario cambia carrera o semestres,
+// iniciando un nuevo ciclo caché-local → actualización remota.
+final _allExamenesProvider = StreamProvider<List<Examen>>((ref) {
+  final carreraId = ref.watch(selectedCarreraProvider);
+  final semestres = ref.watch(selectedSemestresProvider);
 
-  final result = await ref.read(buscarExamenesProvider).call(
-    carreraId: filter.carreraId,
-    semestres: filter.semestres.isEmpty ? null : filter.semestres,
-    materiaId: filter.materiaId,
-    unidadAprendizaje: filter.unidadAprendizaje,
-    searchTerm: filter.searchTerm,
-  );
-  return result.fold((f) => throw f.message, (examenes) => examenes);
+  // El filtro limita la consulta local a los datos relevantes para el usuario.
+  // El remoto siempre trae el set completo para mantener el caché íntegro.
+  final filter = ExamenFilter(carreraId: null, semestres: []);
+
+  return ref
+      .read(getExamenesProvider)(filter)
+      .map(
+        (either) => either.fold(
+          (failure) => throw failure.message,
+          (examenes) => examenes,
+        ),
+      );
+});
+
+// Extrae las áreas de formación únicas de los exámenes ya cargados.
+// No realiza consultas adicionales: se deriva de _allExamenesProvider.
+// Se recalcula automáticamente cuando _allExamenesProvider emite nuevos datos.
+// Consumido por ExploreExams para alimentar los chips de área en FilterCard.
+final areasFormacionProvider = Provider<AsyncValue<List<AreaFormacion>>>((ref) {
+  final examsAsync = ref.watch(_allExamenesProvider);
+  return examsAsync.whenData((exams) {
+    final seen = <String>{};
+    final areas = <AreaFormacion>[];
+    for (final e in exams) {
+      final af = e.materia.areaFormacion;
+      if (af != null && seen.add(af.id)) areas.add(af);
+    }
+    return areas;
+  });
+});
+
+// Aplica los filtros activos sobre la lista completa en memoria.
+// Se recalcula automáticamente cuando cambia cualquier provider de filtro.
+// Devuelve AsyncValue para que el consumidor pueda manejar loading/error/data.
+final examenesProvider = Provider<AsyncValue<List<Examen>>>((ref) {
+  final allAsync = ref.watch(_allExamenesProvider);
+  final carrera = ref.watch(filterCarreraProvider);
+  final semestres = ref.watch(filterSemestresProvider);
+  final area = ref.watch(filterAreaProvider);
+  final turno = ref.watch(filterTurnoProvider);
+  final fecha = ref.watch(filterFechaProvider);
+  final salon = ref.watch(filterSalonProvider);
+
+  debugPrint('__________________________________________________');
+  debugPrint('Valores guardados desde provider: ');
+  debugPrint('carrera: ${carrera}');
+  debugPrint('semestres: ${semestres}');
+  debugPrint('area: ${area}');
+  debugPrint('turno : ${turno}');
+  debugPrint('fecha: ${fecha}');
+  debugPrint('salon: ${salon}');
+  debugPrint('__________________________________________________');
+  return allAsync.whenData((all) {
+    return all.where((e) {
+      // filterCarreraProvider almacena el UUID de la carrera seleccionada.
+      if (carrera != null && e.materia.carrera.id != carrera) return false;
+      if (semestres.isNotEmpty && !semestres.contains(e.materia.semestre)) {
+        return false;
+      }
+      // filterAreaProvider almacena el UUID del área de formación seleccionada.
+      if (area != null && e.materia.areaFormacion?.id != area) return false;
+      // El FilterCard envía 'Matutino'/'Vespertino'; el enum usa 'MATUTINO'/'VESPERTINO'.
+      if (turno != null && e.turno.value != turno.toUpperCase()) return false;
+      if (fecha != null) {
+        final examDay = DateTime(e.fecha.year, e.fecha.month, e.fecha.day);
+        final filterDay = DateTime(fecha.year, fecha.month, fecha.day);
+        if (examDay != filterDay) return false;
+      }
+      // El FilterCard almacena el número de salón como String via int.toString().
+      if (salon != null && e.salon.numeroSalon.toString() != salon)
+        return false;
+      return true;
+    }).toList();
+  });
 });

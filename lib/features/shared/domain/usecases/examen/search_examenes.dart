@@ -12,18 +12,18 @@ class SearchExamenes {
   final SharedRepository repository;
   const SearchExamenes(this.repository);
 
-  // Aplica los filtros opcionales de carrera, semestres, materia y texto libre.
+  // Aplica los filtros opcionales de carrera, semestres, materia, área y texto libre.
   Future<Either<Failure, List<Examen>>> call({
     String? carreraId,
     List<int>? semestres,
     String? materiaId,
-    String? unidadAprendizaje,
+    String? areaFormacion,
     String? searchTerm,
   }) => repository.searchExamenes(
     carreraId: carreraId,
     semestres: semestres,
     materiaId: materiaId,
-    unidadAprendizaje: unidadAprendizaje,
+    areaFormacion: areaFormacion,
     searchTerm: searchTerm,
   );
 }

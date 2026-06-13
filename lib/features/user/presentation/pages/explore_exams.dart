@@ -1,5 +1,5 @@
 // ============================================================
-// NOMBRE: dashboard_materias.dart
+// NOMBRE: explore_exams.dart
 // USO: Pantalla principal del usuario. Muestra la lista de
 //      exámenes ETS con filtros y barra de búsqueda. Navega a
 //      IndividualMateriaView al tocar una tarjeta. Ruta: /inicio.
@@ -7,7 +7,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/utils/date_formatter.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/examenes_providers.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/filter_providers.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/selection_providers.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_text_styles.dart';
@@ -31,10 +34,10 @@ EtsStatus _statusForDate(DateTime fecha) {
 }
 
 Color _barColorForStatus(EtsStatus status) => switch (status) {
-  EtsStatus.today    => AppColors.statusTodayForeground,
+  EtsStatus.today => AppColors.statusTodayForeground,
   EtsStatus.tomorrow => AppColors.statusTomorrowForeground,
-  EtsStatus.soon     => AppColors.statusSoonForeground,
-  EtsStatus.far      => AppColors.statusFarForeground,
+  EtsStatus.soon => AppColors.statusSoonForeground,
+  EtsStatus.far => AppColors.statusFarForeground,
 };
 
 Color? _colorFromHex(String? hex) {
@@ -44,18 +47,43 @@ Color? _colorFromHex(String? hex) {
   return Color(int.parse('FF$h', radix: 16));
 }
 
-class DashboardMaterias extends ConsumerStatefulWidget {
-  const DashboardMaterias({super.key});
+class ExploreExams extends ConsumerStatefulWidget {
+  const ExploreExams({super.key});
   @override
-  ConsumerState<DashboardMaterias> createState() => _DashboardMateriasState();
+  ConsumerState<ExploreExams> createState() => _ExploreExamsState();
 }
 
-class _DashboardMateriasState extends ConsumerState<DashboardMaterias> {
-  Set<String> _selectedCarreras = {'ISC'};
-  Set<String> _selectedSemestres = {'5', '7', '9'};
-  Set<String> _selectedArea = {'Todas'};
-
+class _ExploreExamsState extends ConsumerState<ExploreExams> {
   final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-rellena los filtros con la selección del onboarding en la primera
+    // visita. Si el usuario ya modificó los filtros manualmente, no se sobreescriben.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initFiltersFromSelection();
+    });
+  }
+
+  // Siembra los filtros de carrera y semestres a partir de la selección activa del
+  // onboarding, solo si cada filtro está en su estado inicial (null / vacío).
+  // filterCarreraProvider almacena el UUID directamente; FilterCard lo resuelve
+  // a etiqueta usando las listas de opciones que recibe del padre.
+  void _initFiltersFromSelection() {
+    if (ref.read(filterCarreraProvider) == null) {
+      final carreraId = ref.read(selectedCarreraProvider);
+      if (carreraId != null) {
+        ref.read(filterCarreraProvider.notifier).select(carreraId);
+      }
+    }
+
+    if (ref.read(filterSemestresProvider).isEmpty) {
+      for (final s in ref.read(selectedSemestresProvider)) {
+        ref.read(filterSemestresProvider.notifier).add(s);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -68,6 +96,32 @@ class _DashboardMateriasState extends ConsumerState<DashboardMaterias> {
     final examenesAsync = ref.watch(examenesProvider);
     final topOffset = MediaQuery.of(context).padding.top + 10;
 
+    // ─── Lectura de providers ─────────────────────────────────────────────────
+    final filterCarrera = ref.watch(filterCarreraProvider);
+    final filterSemestres = ref.watch(filterSemestresProvider);
+    final filterArea = ref.watch(filterAreaProvider);
+    final filterTurno = ref.watch(filterTurnoProvider);
+    final filterFecha = ref.watch(filterFechaProvider);
+    final filterSalon = ref.watch(filterSalonProvider);
+
+    // Listas de opciones para FilterCard, extraídas del caché local.
+    final carreras = ref.watch(carrerasProvider).value ?? [];
+    final areas = ref.watch(areasFormacionProvider).value ?? [];
+
+    // ─── Conversión provider → tipos que espera FilterCard ────────────────────
+    // Carrera y área usan UUID como valor; 'Todas'/'Todas' indica sin filtro.
+    final selectedCarreras = filterCarrera == null
+        ? {'Todas'}
+        : {filterCarrera};
+    final selectedSemestres = filterSemestres.isEmpty
+        ? {'Todos'}
+        : filterSemestres.map((s) => s.toString()).toSet();
+    final selectedArea = filterArea == null ? {'Todas'} : {filterArea};
+    final selectedTurno = filterTurno ?? 'Todos';
+    // filterSalon es String? (número como texto); FilterCard espera int?.
+    final selectedSalon = filterSalon == null
+        ? null
+        : int.tryParse(filterSalon);
     return Container(
       height: double.infinity,
       width: double.infinity,
@@ -96,14 +150,52 @@ class _DashboardMateriasState extends ConsumerState<DashboardMaterias> {
                       hint: 'Buscar materia...',
                       onFilterTap: () => FilterCard.show(
                         context,
-                        selectedCarreras: _selectedCarreras,
-                        selectedSemestres: _selectedSemestres,
-                        selectedArea: _selectedArea,
-                        onCarrerasChanged: (set) =>
-                            setState(() => _selectedCarreras = set),
-                        onSemestresChanged: (set) =>
-                            setState(() => _selectedSemestres = set),
-                        onAreaChanged: (v) => setState(() => _selectedArea = v),
+                        carreraOptions: carreras,
+                        areaFormacionOptions: areas,
+                        selectedCarreras: selectedCarreras,
+                        selectedSemestres: selectedSemestres,
+                        selectedArea: selectedArea,
+                        selectedTurno: selectedTurno,
+                        selectedFecha: filterFecha,
+                        selectedSalon: selectedSalon,
+                        // Carrera: guarda el UUID del primer chip seleccionado; 'Todas' limpia.
+                        onCarrerasChanged: (set) {
+                          final n = ref.read(filterCarreraProvider.notifier);
+                          (set.contains('Todas') || set.isEmpty)
+                              ? n.clear()
+                              : n.select(set.first);
+                        },
+                        // Semestres: reemplaza la lista completa con los valores del chip.
+                        onSemestresChanged: (set) {
+                          final n = ref.read(filterSemestresProvider.notifier);
+                          n.clear();
+                          for (final s in set) {
+                            final i = int.tryParse(s);
+                            if (i != null) n.add(i);
+                          }
+                        },
+                        // Área: guarda el UUID del primer chip seleccionado; 'Todas' limpia.
+                        onAreaChanged: (set) {
+                          final n = ref.read(filterAreaProvider.notifier);
+                          (set.contains('Todas') || set.isEmpty)
+                              ? n.clear()
+                              : n.select(set.first);
+                        },
+                        // Turno: 'Todos' limpia; cualquier otro valor lo selecciona.
+                        onTurnoChanged: (v) {
+                          final n = ref.read(filterTurnoProvider.notifier);
+                          v == 'Todos' ? n.clear() : n.select(v);
+                        },
+                        // Fecha: null limpia; cualquier DateTime lo selecciona.
+                        onFechaChanged: (d) {
+                          final n = ref.read(filterFechaProvider.notifier);
+                          d == null ? n.clear() : n.select(d);
+                        },
+                        // Salón: null limpia; el int se convierte a String para el provider.
+                        onSalonChanged: (s) {
+                          final n = ref.read(filterSalonProvider.notifier);
+                          s == null ? n.clear() : n.select(s.toString());
+                        },
                         onApply: () {},
                       ),
                     ),
@@ -169,9 +261,12 @@ class _DashboardMateriasState extends ConsumerState<DashboardMaterias> {
                                     profesor: examen.profesor.nombreCompleto,
                                     semestre: examen.materia.semestre,
                                     salon: examen.salon.numeroSalon,
-                                    fecha: DateFormatter.formatDate(examen.fecha),
+                                    fecha: DateFormatter.formatDate(
+                                      examen.fecha,
+                                    ),
                                     hora: examen.hora,
-                                    turno: examen.turno.name[0].toUpperCase() +
+                                    turno:
+                                        examen.turno.name[0].toUpperCase() +
                                         examen.turno.name.substring(1),
                                     status: status,
                                     barColor: areaColor,
@@ -179,15 +274,16 @@ class _DashboardMateriasState extends ConsumerState<DashboardMaterias> {
                                       '/materia',
                                       extra: MateriaData(
                                         nombre: examen.materia.nombre,
-                                        profesor: examen.profesor.nombreCompleto,
+                                        profesor:
+                                            examen.profesor.nombreCompleto,
                                         semestre: examen.materia.semestre,
                                         salon: examen.salon.numeroSalon,
                                         fecha: DateFormatter.formatDate(
                                           examen.fecha,
                                         ),
                                         hora: examen.hora,
-                                        turno: examen.turno.name[0]
-                                                .toUpperCase() +
+                                        turno:
+                                            examen.turno.name[0].toUpperCase() +
                                             examen.turno.name.substring(1),
                                         status: status,
                                         barColor: barColor,
@@ -197,7 +293,9 @@ class _DashboardMateriasState extends ConsumerState<DashboardMaterias> {
                                 );
                               }, childCount: examenes.length),
                             ),
-                            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 16),
+                            ),
                           ],
                         ),
                       ],

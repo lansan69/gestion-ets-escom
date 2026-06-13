@@ -13,8 +13,7 @@ class GetCarreras {
 
   GetCarreras(this.repository);
 
-  // Delega al repositorio y retorna la lista de carreras o un Failure.
-  Future<Either<Failure, List<Carrera>>> call() async {
-    return await repository.getCarreras();
-  }
+  // Delega al repositorio. Devuelve un Stream que emite primero el caché local
+  // y luego los datos remotos actualizados (offline-first).
+  Stream<Either<Failure, List<Carrera>>> call() => repository.getCarreras();
 }

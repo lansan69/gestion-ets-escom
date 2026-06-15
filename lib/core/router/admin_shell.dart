@@ -43,18 +43,18 @@ class AdminShell extends StatelessWidget {
         onDestinationSelected: (int index) => _onItemTapped(index, context),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.circle_outlined), // Ícono temporal (ajusta al de tu Figma)
-            selectedIcon: Icon(Icons.circle, color: Color(0xFF00338D)),
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard_rounded, color: Color(0xFF00338D)),
             label: 'Dashboard',
           ),
           NavigationDestination(
-            icon: Icon(Icons.circle_outlined),
-            selectedIcon: Icon(Icons.circle, color: Color(0xFF00338D)),
+            icon: Icon(Icons.view_list_outlined),
+            selectedIcon: Icon(Icons.view_list_rounded, color: Color(0xFF00338D)),
             label: 'Catálogos',
           ),
           NavigationDestination(
-            icon: Icon(Icons.circle_outlined),
-            selectedIcon: Icon(Icons.circle, color: Color(0xFF00338D)),
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded, color: Color(0xFF00338D)),
             label: 'Mi Cuenta',
           ),
         ],

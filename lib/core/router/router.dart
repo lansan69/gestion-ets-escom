@@ -19,9 +19,11 @@ import 'package:gestion_ets_escom/features/user/presentation/pages/onboarding_ca
 import 'package:gestion_ets_escom/features/user/presentation/pages/onboarding_semestre.dart';
 import 'package:gestion_ets_escom/core/router/admin_shell.dart';
 import 'package:gestion_ets_escom/features/admin/presentation/pages/admin_dashboard_page.dart';
-
-// 1. Agrega la importación de tu nueva pantalla de login administrativo
+import 'package:gestion_ets_escom/features/admin/presentation/pages/admin_catalogs_page.dart';
 import 'package:gestion_ets_escom/features/admin/presentation/pages/admin_login_page.dart';
+import 'package:gestion_ets_escom/features/admin/presentation/pages/admin_profile_page.dart';
+import 'package:gestion_ets_escom/features/user/presentation/pages/calendar_page.dart';
+import 'package:gestion_ets_escom/features/user/presentation/pages/settings_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
@@ -35,6 +37,7 @@ final GoRouter appRouter = GoRouter(
       builder: (_, _) => const AdminLoginPage(),
     ),
     // --- NUEVO BLOQUE DEL ADMINISTRADOR ---
+    // --- NUEVO BLOQUE DEL ADMINISTRADOR ---
     ShellRoute(
       builder: (_, _, child) => AdminShell(child: child),
       routes: [
@@ -42,14 +45,14 @@ final GoRouter appRouter = GoRouter(
           path: '/admin/dashboard',
           builder: (_, _) => const AdminDashboardPage(),
         ),
-        // Pantallas "Placeholder" mientras las diseñamos
         GoRoute(
           path: '/admin/catalogos',
-          builder: (_, _) => const Center(child: Text('Pantalla de Catálogos (A05)')),
+          builder: (_, _) => const AdminCatalogsPage(),
         ),
+        // AQUÍ ESTÁ EL CAMBIO:
         GoRoute(
           path: '/admin/perfil',
-          builder: (_, _) => const Center(child: Text('Pantalla de Mi Cuenta (A06)')),
+          builder: (_, _) => const AdminProfilePage(), // <-- Ahora apunta a tu página real
         ),
       ],
     ),
@@ -74,12 +77,12 @@ final GoRouter appRouter = GoRouter(
         GoRoute(path: '/inicio', builder: (_, _) => ExploreExams()),
         GoRoute(
           path: '/calendario',
-          builder: (_, _) => Calendario(),
+          builder: (_, _) => const CalendarPage(), // <-- Reemplazo aquí
         ),
         GoRoute(path: '/salones', builder: (_, _) => const SalonesPage()),
         GoRoute(
           path: '/config',
-          builder: (_, _) => const _PlaceholderTab(label: 'Configuración'),
+          builder: (_, _) => const SettingsPage(), // <-- Reemplazo aquí
         ),
       ],
     ),

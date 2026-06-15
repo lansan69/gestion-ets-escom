@@ -736,10 +736,17 @@ class _EditExamModal extends StatelessWidget {
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: items.contains(currentValue) ? currentValue : items.first,
+          isExpanded: true, // <--- ESTA ES LA SOLUCIÓN PRINCIPAL
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey[500]),
           style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
           decoration: _inputDecoration(icon: icon),
-          items: items.map((String val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+          items: items.map((String val) => DropdownMenuItem(
+            value: val, 
+            child: Text(
+              val,
+              overflow: TextOverflow.ellipsis, // <--- CORTA EL TEXTO LARGO CON "..."
+            ),
+          )).toList(),
           onChanged: (val) {},
         ),
       ],

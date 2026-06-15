@@ -148,4 +148,24 @@ class SharedRepositoryImpl implements SharedRepository {
       return Left(const ServerFailure('Ocurrió un error inesperado'));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> addToCalendario(String examenId) async {
+    try {
+      await local.addToCalendario(examenId);
+      return const Right(null);
+    } catch (e) {
+      return Left(const ServerFailure('No se pudo guardar. Intenta de nuevo'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> isInCalendario(String examenId) async {
+    try {
+      final result = await local.isInCalendario(examenId);
+      return Right(result);
+    } catch (e) {
+      return const Right(false);
+    }
+  }
 }

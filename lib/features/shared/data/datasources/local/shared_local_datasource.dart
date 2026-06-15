@@ -29,4 +29,13 @@ abstract class SharedLocalDatasource {
   // Inserta o reemplaza exámenes y todos sus objetos relacionados en el caché local.
   // Guarda TODOS los semestres presentes en la lista, sin filtrar por selección activa.
   Future<void> upsertExamenes(List<ExamenModel> examenes);
+
+  // Devuelve true si la tabla preferencia tiene al menos una fila (onboarding completado).
+  Future<bool> hasPreferencia();
+
+  // Guarda un examen en el calendario local. Ignora duplicados (INSERT OR IGNORE).
+  Future<void> addToCalendario(String examenId);
+
+  // Devuelve true si el examen ya está guardado en el calendario local.
+  Future<bool> isInCalendario(String examenId);
 }

@@ -35,4 +35,8 @@ abstract class SharedRepository {
     String? searchTerm,
   });
   Future<Either<Failure, Examen>> getExamenById(String id);
+
+  // Calendario local
+  Future<Either<Failure, void>> addToCalendario(String examenId);
+  Future<Either<Failure, bool>> isInCalendario(String examenId);
 }

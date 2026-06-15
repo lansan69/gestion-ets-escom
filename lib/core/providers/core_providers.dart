@@ -17,6 +17,7 @@ import 'package:gestion_ets_escom/features/shared/data/datasources/shared_remote
 import 'package:gestion_ets_escom/features/shared/data/datasources/shared_remote_datasource_impl.dart';
 import 'package:gestion_ets_escom/features/shared/data/repositories/shared_repository_impl.dart';
 import 'package:gestion_ets_escom/features/shared/domain/repositories/shared_repository.dart';
+import 'package:gestion_ets_escom/features/shared/domain/usecases/calendario/add_to_calendario.dart';
 
 // Expone la instancia global del cliente de Supabase ya inicializado.
 // Consumido por sharedDatasourceProvider y cualquier datasource que acceda a Supabase.
@@ -56,4 +57,18 @@ final sharedRepositoryProvider = Provider<SharedRepository>(
     datasource: ref.read(sharedDatasourceProvider),
     local: ref.read(sharedLocalDatasourceProvider),
   ),
+);
+
+// ── Calendario ────────────────────────────
+final addToCalendarioProvider = Provider<AddToCalendario>(
+  (ref) => AddToCalendario(ref.read(sharedRepositoryProvider)),
+);
+
+final isInCalendarioProvider = FutureProvider.family<bool, String>(
+  (ref, examenId) async {
+    final result = await ref
+        .read(sharedRepositoryProvider)
+        .isInCalendario(examenId);
+    return result.fold((_) => false, (v) => v);
+  },
 );

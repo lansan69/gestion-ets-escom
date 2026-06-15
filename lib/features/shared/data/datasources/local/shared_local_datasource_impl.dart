@@ -5,6 +5,7 @@
 //      de DatabaseHelper. Consumido por SharedRepositoryImpl.
 // ============================================================
 
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/database_helper.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/shared_local_datasource.dart';
@@ -53,8 +54,9 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
       args.addAll(filter.semestres);
     }
 
-    final whereClause =
-        whereClauses.isEmpty ? '' : 'WHERE ${whereClauses.join(' AND ')}';
+    final whereClause = whereClauses.isEmpty
+        ? ''
+        : 'WHERE ${whereClauses.join(' AND ')}';
 
     // Se usan alias para evitar colisiones de nombres entre tablas.
     final rows = await db.rawQuery('''
@@ -88,7 +90,8 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
 
         p.id            AS p_id,
         p.nombre        AS p_nombre,
-        p.primer_apellido,             p.segundo_apellido,
+        p.primer_apellido,             
+        p.segundo_apellido,
         p.correo,
         p.activo        AS p_activo,
 
@@ -105,8 +108,8 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
       INNER JOIN profesores    p    ON e.profesor_id         = p.id
       LEFT  JOIN areas_formacion af_p ON p.area_formacion_id = af_p.id
       $whereClause
+      ORDER BY e.fecha ASC, e.hora ASC
     ''', args);
-
     return rows.map((row) => ExamenModel.fromMap(row)).toList();
   }
 
@@ -224,5 +227,31 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
     }
 
     await batch.commit(noResult: true);
+  }
+
+  @override
+  Future<bool> hasPreferencia() async {
+    final db = await dbHelper.database;
+    final rows = await db.query('preferencia', limit: 1);
+    return rows.isNotEmpty;
+  }
+
+  @override
+  Future<void> addToCalendario(String examenId) async {
+    final db = await dbHelper.database;
+    await db.rawInsert(
+      'INSERT OR IGNORE INTO calendario (examen_id) VALUES (?)',
+      [examenId],
+    );
+  }
+
+  @override
+  Future<bool> isInCalendario(String examenId) async {
+    final db = await dbHelper.database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS cnt FROM calendario WHERE examen_id = ?',
+      [examenId],
+    );
+    return (result.first['cnt'] as int) > 0;
   }
 }

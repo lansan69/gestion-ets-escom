@@ -18,7 +18,7 @@ class CardExamenMateriaExpanded extends StatelessWidget {
   final String nombreMateria;
   final String profesor;
   final int semestre;
-  final int salon;
+  final String salon;
   final String fecha;
   final String hora;
   final String turno;
@@ -83,6 +83,7 @@ class CardExamenMateriaExpanded extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // ─── Barra de color lateral ──────────────────────────
                 Container(
                   width: 10,
                   decoration: BoxDecoration(
@@ -93,6 +94,7 @@ class CardExamenMateriaExpanded extends StatelessWidget {
                     ),
                   ),
                 ),
+                // ─── Contenido principal ─────────────────────────────
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -102,7 +104,7 @@ class CardExamenMateriaExpanded extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ─── Nombre + badge ──────────────────────────────
+                        // ─── Nombre + badge ──────────────────────────
                         Row(
                           children: [
                             Expanded(
@@ -126,7 +128,7 @@ class CardExamenMateriaExpanded extends StatelessWidget {
                               ),
                               child: Text(
                                 _statusLabel,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: AppColors.textPrimary,
@@ -135,99 +137,82 @@ class CardExamenMateriaExpanded extends StatelessWidget {
                             ),
                           ],
                         ),
-                        // ─── Date and classroom ──────────────────────────
+                        const SizedBox(height: 4),
+
+                        // ─── Fecha + Salón ───────────────────────────
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
                             MetaChip(
                               icon: Icons.calendar_today_outlined,
                               label: fecha,
-                              fontSize: 18,
+                              fontSize: 15,
                               iconSize: 18,
                             ),
-                            SizedBox(width: 30),
+                            const SizedBox(width: 30),
                             MetaChip(
                               icon: Icons.meeting_room_outlined,
                               label: 'Salón $salon',
-                              fontSize: 18,
+                              fontSize: 15,
                               iconSize: 18,
                             ),
                           ],
                         ),
-                        SizedBox(height: 20),
-                        // ─── Horario ────────────────────────────────────
-                        MetaChip(
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+
+                        // ─── Horario ─────────────────────────────────
+                        _InfoRow(
                           icon: Icons.access_time_outlined,
-                          label: 'Horario: ${hora} AM',
-                          fontSize: 18,
-                          iconSize: 18,
+                          label: 'Horario: $hora AM',
                         ),
-                        const SizedBox(height: 2),
+                        const Divider(height: 1),
 
-                        // ─── Profesor ────────────────────────────────────
-                        MetaChip(
-                          icon: Icons.person,
-                          label: 'Coordinador: ${profesor}',
-                          fontSize: 18,
-                          iconSize: 18,
+                        // ─── Coordinador ─────────────────────────────
+                        _InfoRow(
+                          icon: Icons.person_outline,
+                          label: 'Coordinador: $profesor',
                         ),
-                        const SizedBox(height: 2),
+                        const Divider(height: 1),
 
-                        MetaChip(
-                          icon: Icons.email,
-                          label: 'Correo: profesor@gmail.com',
-                          fontSize: 18,
-                          iconSize: 18,
+                        // ─── Correo ───────────────────────────────────
+                        _InfoRow(
+                          icon: Icons.email_outlined,
+                          label: 'profesor@ipn.mx',
+                          trailingIcon: Icons.copy,
+                          onTrailingTap: () {
+                            // TODO: copiar al portapapeles
+                          },
                         ),
-                        const SizedBox(height: 2),
+                        const Divider(height: 1),
 
-                        Row(
-                          children: [
-                            MetaChip(
-                              icon: Icons.picture_as_pdf,
-                              label: 'Guía: ',
-                              fontSize: 18,
-                              iconSize: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            PdfFileChip(file: documentoGuia),
-                          ],
+                        // ─── Guía PDF ─────────────────────────────────
+                        _InfoRow(
+                          icon: Icons.description_outlined,
+                          label: documentoGuia != null
+                              ? documentoGuia!.path.split('/').last
+                              : 'Sin guía',
+                          trailingIcon: documentoGuia != null
+                              ? Icons.download
+                              : null,
                         ),
-                        const SizedBox(height: 2),
+                        const Divider(height: 1),
 
-                        Row(
-                          children: [
-                            MetaChip(
-                              icon: Icons.picture_as_pdf,
-                              label: 'Proyecto: ',
-                              fontSize: 18,
-                              iconSize: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            PdfFileChip(file: documentoGuia),
-                          ],
+                        // ─── Proyecto PDF ─────────────────────────────
+                        _InfoRow(
+                          icon: Icons.insert_drive_file_outlined,
+                          label: documentoProyecto != null
+                              ? documentoProyecto!.path.split('/').last
+                              : 'Sin proyecto',
+                          trailingIcon: documentoProyecto != null
+                              ? Icons.download
+                              : null,
                         ),
-                        const SizedBox(height: 2),
+                        const Divider(height: 1),
 
-                        MetaChip(
-                          icon: Icons.note,
-                          label: 'Notas : ',
-                          fontSize: 18,
-                          iconSize: 18,
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 22, right: 22),
-                            child: Text(
-                              "Asegurense de acudir de manera presencial al cubículo del profesor antes del examen",
-                              textAlign: TextAlign.justify,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ),
+                        // ─── Notas ────────────────────────────────────
+                        _InfoRow(
+                          icon: Icons.note_outlined,
+                          label: notas.isNotEmpty ? notas : 'Sin notas',
                         ),
                       ],
                     ),
@@ -237,6 +222,59 @@ class CardExamenMateriaExpanded extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Widget auxiliar para filas de información ───────────────────────────────
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final IconData? trailingIcon;
+  final VoidCallback? onTrailingTap;
+
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    this.trailingIcon,
+    this.onTrailingTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.textMuted),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          if (trailingIcon != null)
+            GestureDetector(
+              onTap: onTrailingTap,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryDarkBlue.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  trailingIcon,
+                  size: 16,
+                  color: AppColors.primaryDarkBlue,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

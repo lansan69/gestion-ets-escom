@@ -7,7 +7,11 @@
 // ============================================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gestion_ets_escom/core/utils/snackbar_helper.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/database_helper.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/filter_providers.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/preferencias_provider.dart';
+import 'package:sqflite/sqflite.dart'; // ConflictAlgorithm
 import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
@@ -23,15 +27,58 @@ const List<Color> _carreraColors = [
 ];
 
 class OnBoardingCarrera extends ConsumerStatefulWidget {
-  const OnBoardingCarrera({super.key});
+  final bool isEditing;
+  const OnBoardingCarrera({super.key, this.isEditing = false});
 
   @override
   ConsumerState<OnBoardingCarrera> createState() => _OnBoardingCarreraState();
 }
 
 class _OnBoardingCarreraState extends ConsumerState<OnBoardingCarrera> {
-  // UUID de la carrera actualmente seleccionada; null = ninguna.
   String? _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isEditing) _loadCurrentCarrera();
+  }
+
+  Future<void> _loadCurrentCarrera() async {
+    final db = await DatabaseHelper().database;
+    final rows = await db.query('preferencia', where: 'omitir = 0', limit: 1);
+    if (!mounted || rows.isEmpty) return;
+    final cid = rows.first['carrera_id'] as String?;
+    if (cid != null && cid.isNotEmpty) {
+      setState(() => _selectedId = cid);
+    }
+  }
+
+  Future<void> _saveEditing() async {
+    if (_selectedId == null) return;
+    final db = await DatabaseHelper().database;
+    final rows = await db.query('preferencia', where: 'omitir = 0', limit: 1);
+    final existing = rows.isNotEmpty ? rows.first : null;
+
+    // Delete all rows first — updating a PRIMARY KEY in-place violates constraints
+    // when the new carrera_id might already exist in another row.
+    await db.delete('preferencia');
+    await db.insert(
+      'preferencia',
+      {
+        'carrera_id': _selectedId,
+        'omitir': 0,
+        'seleccion1_semestre': existing?['seleccion1_semestre'],
+        'seleccion2_semestre': existing?['seleccion2_semestre'],
+        'seleccion3_semestre': existing?['seleccion3_semestre'],
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    if (!mounted) return;
+    ref.invalidate(preferenciasPageProvider);
+    ref.read(filterCarreraProvider.notifier).select(_selectedId!);
+    SnackbarHelper.showSuccess(context, 'Carrera actualizada');
+    context.pop();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +90,9 @@ class _OnBoardingCarreraState extends ConsumerState<OnBoardingCarrera> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: true,
-        title: const Text("Configura tu perfil"),
+        title: Text(
+          widget.isEditing ? 'Cambiar carrera' : 'Configura tu perfil',
+        ),
         foregroundColor: Colors.white,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -100,7 +149,7 @@ class _OnBoardingCarreraState extends ConsumerState<OnBoardingCarrera> {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              'Paso 1 de 2',
+                              widget.isEditing ? 'Cambio de carrera' : 'Paso 1 de 2',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textSecondary,
@@ -116,7 +165,9 @@ class _OnBoardingCarreraState extends ConsumerState<OnBoardingCarrera> {
                               ),
                             ),
                             Text(
-                              'Podrás cambiarla después en configuración',
+                              widget.isEditing
+                                  ? 'Tus semestres se mantendrán igual'
+                                  : 'Podrás cambiarla después en configuración',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textSecondary,
@@ -156,26 +207,30 @@ class _OnBoardingCarreraState extends ConsumerState<OnBoardingCarrera> {
                       ),
                     ),
                     AppPrimaryButton(
-                      label: 'Continuar',
+                      label: widget.isEditing ? 'Guardar' : 'Continuar',
                       width: buttonWidth,
-                      // Pasa el UUID seleccionado como extra; puede ser null si el usuario no eligió.
-                      onPressed: () => context.push(
-                        '/onboarding/semestre',
-                        extra: _selectedId,
+                      onPressed: widget.isEditing
+                          ? _saveEditing
+                          : () => context.push(
+                                '/onboarding/semestre',
+                                extra: _selectedId,
+                              ),
+                    ),
+                    if (!widget.isEditing)
+                      AppSecondaryButton(
+                        label: 'Omitir',
+                        width: buttonWidth,
+                        onPressed: () async {
+                          final db = await DatabaseHelper().database;
+                          await db.insert(
+                            'preferencia',
+                            {'omitir': 1, 'carrera_id': ''},
+                            conflictAlgorithm: ConflictAlgorithm.replace,
+                          );
+                          if (!context.mounted) return;
+                          context.go('/inicio');
+                        },
                       ),
-                    ),
-                    AppSecondaryButton(
-                      label: 'Omitir',
-                      width: buttonWidth,
-                      onPressed: () async {
-                        final db = await DatabaseHelper().database;
-                        await db.rawInsert(
-                          "INSERT OR REPLACE INTO preferencia (omitir, carrera_id, semestre) VALUES (1, '', 0)",
-                        );
-                        if (!context.mounted) return;
-                        context.go('/inicio');
-                      },
-                    ),
                   ],
                 ),
               ),

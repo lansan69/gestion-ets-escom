@@ -7,44 +7,91 @@
 //      Ruta: /onboarding/semestre.
 // ============================================================
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gestion_ets_escom/core/utils/snackbar_helper.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/database_helper.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/semestre_card.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/filter_providers.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/preferencias_provider.dart';
+import 'package:sqflite/sqflite.dart'; // ConflictAlgorithm
 
-class OnBoardingSemestre extends StatefulWidget {
+class OnBoardingSemestre extends ConsumerStatefulWidget {
   // UUID de la carrera seleccionada en el paso anterior; null si se omitió.
   final String? carreraId;
+  final bool isEditing;
 
-  const OnBoardingSemestre({super.key, this.carreraId});
+  const OnBoardingSemestre({super.key, this.carreraId, this.isEditing = false});
 
   @override
-  State<OnBoardingSemestre> createState() => _OnBoardingSemestreState();
+  ConsumerState<OnBoardingSemestre> createState() => _OnBoardingSemestreState();
 }
 
-class _OnBoardingSemestreState extends State<OnBoardingSemestre> {
+class _OnBoardingSemestreState extends ConsumerState<OnBoardingSemestre> {
   final List<int> _selected = [];
 
-  // Persiste las preferencias en SQLite y navega al app principal.
-  // Si no hay carreraId o no se seleccionó ningún semestre, navega sin guardar.
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  // Loads previously saved semester selections for the given carrera so
+  // that returning users see their current configuration pre-filled.
+  Future<void> _loadPreferences() async {
+    final cid = widget.carreraId;
+    if (cid == null) return;
+    final db = await DatabaseHelper().database;
+    final rows = await db.query(
+      'preferencia',
+      where: 'carrera_id = ? AND omitir = 0',
+      whereArgs: [cid],
+    );
+    if (!mounted || rows.isEmpty) return;
+    final row = rows.first;
+    final sems = <int>[];
+    for (final key in [
+      'seleccion1_semestre',
+      'seleccion2_semestre',
+      'seleccion3_semestre',
+    ]) {
+      final v = row[key] as int?;
+      if (v != null) sems.add(v);
+    }
+    setState(() {
+      _selected
+        ..clear()
+        ..addAll(sems);
+    });
+  }
+
+  // Persiste la selección como una única fila por carrera y navega al inicio.
   Future<void> _saveAndContinue() async {
     final cid = widget.carreraId;
     if (cid != null && _selected.isNotEmpty) {
       final db = await DatabaseHelper().database;
-      final batch = db.batch();
-      for (final s in _selected) {
-        batch.insert(
-          'preferencia',
-          {'carrera_id': cid, 'semestre': s},
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-      }
-      await batch.commit(noResult: true);
+      _selected.sort();
+      
+      await db.insert('preferencia', {
+        'carrera_id': cid,
+        'omitir': 0,
+        'seleccion1_semestre': _selected[0],
+        'seleccion2_semestre': _selected.length > 1 ? _selected[1] : null,
+        'seleccion3_semestre': _selected.length > 2 ? _selected[2] : null,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
-    if (mounted) context.go('/inicio');
+    if (!mounted) return;
+    if (widget.isEditing) {
+      ref.invalidate(preferenciasPageProvider);
+      final semsNotifier = ref.read(filterSemestresProvider.notifier);
+      semsNotifier.clear();
+      for (final s in _selected) { semsNotifier.add(s); }
+      SnackbarHelper.showSuccess(context, 'Preferencias actualizadas');
+    }
+    context.go('/config');
   }
 
   @override
@@ -58,7 +105,9 @@ class _OnBoardingSemestreState extends State<OnBoardingSemestre> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: true,
-        title: const Text("Configura tu perfil"),
+        title: Text(
+          widget.isEditing ? 'Cambiar semestres' : 'Configura tu perfil',
+        ),
         foregroundColor: Colors.white,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -142,10 +191,13 @@ class _OnBoardingSemestreState extends State<OnBoardingSemestre> {
                           width: cardWidth,
                           child: SemestreCard(
                             numeroSemestre: index + 1,
+                            isSelected: _selected.contains(index + 1),
                             onToggle: (numero, isSelected) {
                               setState(() {
                                 if (isSelected) {
-                                  if (_selected.length < 3) _selected.add(numero);
+                                  if (_selected.length < 3) {
+                                    _selected.add(numero);
+                                  }
                                 } else {
                                   _selected.remove(numero);
                                 }
@@ -176,15 +228,16 @@ class _OnBoardingSemestreState extends State<OnBoardingSemestre> {
                     ),
                     const Spacer(),
                     AppPrimaryButton(
-                      label: 'Continuar',
+                      label: widget.isEditing ? 'Guardar' : 'Continuar',
                       width: buttonWidth,
                       onPressed: _saveAndContinue,
                     ),
-                    AppSecondaryButton(
-                      label: 'Omitir',
-                      width: buttonWidth,
-                      onPressed: () => context.go('/inicio'),
-                    ),
+                    if (!widget.isEditing)
+                      AppSecondaryButton(
+                        label: 'Omitir',
+                        width: buttonWidth,
+                        onPressed: () => context.go('/inicio'),
+                      ),
                   ],
                 ),
               ),

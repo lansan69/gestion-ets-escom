@@ -88,14 +88,19 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
     final rows = await db.query('preferencia', where: 'omitir = 0');
     if (!mounted || rows.isEmpty) return;
 
+    final row = rows.first;
     if (ref.read(filterCarreraProvider) == null) {
-      ref
-          .read(filterCarreraProvider.notifier)
-          .select(rows.first['carrera_id'] as String);
+      final cid = row['carrera_id'] as String? ?? '';
+      if (cid.isNotEmpty) ref.read(filterCarreraProvider.notifier).select(cid);
     }
     if (ref.read(filterSemestresProvider).isEmpty) {
-      for (final row in rows) {
-        ref.read(filterSemestresProvider.notifier).add(row['semestre'] as int);
+      for (final key in [
+        'seleccion1_semestre',
+        'seleccion2_semestre',
+        'seleccion3_semestre',
+      ]) {
+        final v = row[key] as int?;
+        if (v != null) ref.read(filterSemestresProvider.notifier).add(v);
       }
     }
   }
@@ -293,27 +298,24 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
                                       context.push(
                                         '/materia',
                                         extra: MateriaData(
-                                        id: examen.id,
-                                        nombre: examen.materia.nombre,
-                                        profesor:
-                                            examen.profesor.nombreCompleto,
-                                        emailProfesor: examen.profesor.correo,
-                                        semestre: examen.materia.semestre,
-                                        salon: examen.salon.etiquetaSalon ?? '',
-                                        fecha: DateFormatter.formatDate(
-                                          examen.fecha,
+                                          id: examen.id,
+                                          nombre: examen.materia.nombre,
+                                          profesor: examen.profesor.nombreCompleto,
+                                          emailProfesor: examen.profesor.correo,
+                                          semestre: examen.materia.semestre,
+                                          salon: examen.salon.etiquetaSalon ?? '',
+                                          fecha: DateFormatter.formatDate(examen.fecha),
+                                          rawFecha: examen.fecha,
+                                          hora: examen.hora,
+                                          turno: examen.turno.name[0].toUpperCase() +
+                                              examen.turno.name.substring(1),
+                                          status: status,
+                                          barColor: barColor,
+                                          areaFormacionColor: examen.materia.areaFormacion?.color,
+                                          guia: examen.documentoGuia,
+                                          proyecto: examen.documentoProyecto,
+                                          notas: examen.notas,
                                         ),
-                                        rawFecha: examen.fecha,
-                                        hora: examen.hora,
-                                        turno:
-                                            examen.turno.name[0].toUpperCase() +
-                                            examen.turno.name.substring(1),
-                                        status: status,
-                                        barColor: barColor,
-                                        guia: examen.documentoGuia,
-                                        proyecto: examen.documentoProyecto,
-                                        notas: examen.notas,
-                                      ),
                                       );
                                     },
                                   ),

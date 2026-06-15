@@ -1,66 +1,77 @@
 // ============================================================
 // NOMBRE: onboarding_semestre.dart
 // USO: Paso 2 del onboarding. Permite al usuario seleccionar
-//      hasta 3 semestres mediante SemestreCard. Navega a /inicio
-//      al continuar. Ruta: /onboarding/semestre.
+//      hasta 3 semestres. Al confirmar, persiste las preferencias
+//      (carreraId × semestre) en SQLite y navega a /inicio.
+//      Recibe carreraId desde OnBoardingCarrera vía GoRouter extra.
+//      Ruta: /onboarding/semestre.
 // ============================================================
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gestion_ets_escom/features/user/presentation/providers/selection_providers.dart';
+import 'package:gestion_ets_escom/features/shared/data/datasources/local/database_helper.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/semestre_card.dart';
+import 'package:sqflite/sqflite.dart';
 
-class OnBoardingSemestre extends ConsumerWidget {
-  const OnBoardingSemestre({super.key});
+class OnBoardingSemestre extends StatefulWidget {
+  // UUID de la carrera seleccionada en el paso anterior; null si se omitió.
+  final String? carreraId;
+
+  const OnBoardingSemestre({super.key, this.carreraId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<OnBoardingSemestre> createState() => _OnBoardingSemestreState();
+}
+
+class _OnBoardingSemestreState extends State<OnBoardingSemestre> {
+  final List<int> _selected = [];
+
+  // Persiste las preferencias en SQLite y navega al app principal.
+  // Si no hay carreraId o no se seleccionó ningún semestre, navega sin guardar.
+  Future<void> _saveAndContinue() async {
+    final cid = widget.carreraId;
+    if (cid != null && _selected.isNotEmpty) {
+      final db = await DatabaseHelper().database;
+      final batch = db.batch();
+      for (final s in _selected) {
+        batch.insert(
+          'preferencia',
+          {'carrera_id': cid, 'semestre': s},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      await batch.commit(noResult: true);
+    }
+    if (mounted) context.go('/inicio');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double buttonWidth = screenWidth * 0.9;
     final double cardWidth = (screenWidth - 60 - 20) / 3;
 
-    // Observa la lista de semestres seleccionados desde el provider.
-    final selected = ref.watch(selectedSemestresProvider);
-
     return Scaffold(
       backgroundColor: AppColors.primaryDarkBlue,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        automaticallyImplyLeading: true,
+        title: const Text("Configura tu perfil"),
+        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        flexibleSpace: CustomPaint(
+          painter: BackgroundPatternPainter(),
+          child: const SizedBox.expand(),
+        ),
+      ),
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // ─── Encabezado con patrón de fondo ─────────────────────────────────────────
-            Container(
-              height: MediaQuery.of(context).size.height * 0.08,
-              color: AppColors.primaryDarkBlue,
-              child: Stack(
-                alignment: Alignment.centerLeft,
-                children: [
-                  CustomPaint(
-                    size: Size.infinite,
-                    painter: BackgroundPatternPainter(),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10, left: 20),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: const [
-                        Spacer(),
-                        Text(
-                          'Configura tu perfil',
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ─── Contenido principal ────────────────────────────────────────────────────
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -68,11 +79,11 @@ class OnBoardingSemestre extends ConsumerWidget {
                   color: AppColors.backgroundWhite,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
-                padding: const EdgeInsets.only(
+                padding: EdgeInsets.only(
                   top: 10,
                   left: 30,
                   right: 30,
-                  bottom: 30,
+                  bottom: MediaQuery.of(context).padding.bottom + 10,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,17 +143,15 @@ class OnBoardingSemestre extends ConsumerWidget {
                           child: SemestreCard(
                             numeroSemestre: index + 1,
                             onToggle: (numero, isSelected) {
-                              if (isSelected) {
-                                ref
-                                    .read(selectedSemestresProvider.notifier)
-                                    .add(numero);
-                              } else {
-                                ref
-                                    .read(selectedSemestresProvider.notifier)
-                                    .remove(numero);
-                              }
+                              setState(() {
+                                if (isSelected) {
+                                  if (_selected.length < 3) _selected.add(numero);
+                                } else {
+                                  _selected.remove(numero);
+                                }
+                              });
                             },
-                            canSelect: () => selected.length < 3,
+                            canSelect: () => _selected.length < 3,
                           ),
                         ),
                       ),
@@ -151,7 +160,7 @@ class OnBoardingSemestre extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(3, (i) {
-                        final filled = i < selected.length;
+                        final filled = i < _selected.length;
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           width: 10,
@@ -165,17 +174,16 @@ class OnBoardingSemestre extends ConsumerWidget {
                         );
                       }),
                     ),
-
                     const Spacer(),
                     AppPrimaryButton(
                       label: 'Continuar',
                       width: buttonWidth,
-                      onPressed: () => context.push('/inicio'),
+                      onPressed: _saveAndContinue,
                     ),
                     AppSecondaryButton(
                       label: 'Omitir',
                       width: buttonWidth,
-                      onPressed: () => context.push('/inicio'),
+                      onPressed: () => context.go('/inicio'),
                     ),
                   ],
                 ),

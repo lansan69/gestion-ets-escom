@@ -4,17 +4,18 @@
 //      exámenes ETS con filtros y barra de búsqueda. Navega a
 //      IndividualMateriaView al tocar una tarjeta. Ruta: /inicio.
 // ============================================================
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gestion_ets_escom/core/providers/core_providers.dart';
 import 'package:gestion_ets_escom/core/utils/date_formatter.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/examenes_providers.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/filter_providers.dart';
-import 'package:gestion_ets_escom/features/user/presentation/providers/selection_providers.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_text_styles.dart';
-import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_search_bar.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/card_materia.dart';
@@ -55,10 +56,12 @@ class ExploreExams extends ConsumerStatefulWidget {
 
 class _ExploreExamsState extends ConsumerState<ExploreExams> {
   final _searchController = TextEditingController();
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_onSearchChanged);
     // Pre-rellena los filtros con la selección del onboarding en la primera
     // visita. Si el usuario ya modificó los filtros manualmente, no se sobreescriben.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -66,27 +69,41 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
     });
   }
 
-  // Siembra los filtros de carrera y semestres a partir de la selección activa del
-  // onboarding, solo si cada filtro está en su estado inicial (null / vacío).
-  // filterCarreraProvider almacena el UUID directamente; FilterCard lo resuelve
-  // a etiqueta usando las listas de opciones que recibe del padre.
-  void _initFiltersFromSelection() {
-    if (ref.read(filterCarreraProvider) == null) {
-      final carreraId = ref.read(selectedCarreraProvider);
-      if (carreraId != null) {
-        ref.read(filterCarreraProvider.notifier).select(carreraId);
-      }
-    }
+  // Actualiza filterSearchbarProvider con debounce de 300 ms para evitar
+  // reconstrucciones excesivas mientras el usuario escribe.
+  void _onSearchChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      final text = _searchController.text;
+      final n = ref.read(filterSearchbarProvider.notifier);
+      text.isEmpty ? n.clear() : n.select(text);
+    });
+  }
 
+  // Lee la tabla preferencia desde SQLite y siembra los filtros de carrera y
+  // semestres, solo si cada filtro está todavía en su estado inicial (null / vacío).
+  Future<void> _initFiltersFromSelection() async {
+    final db = await ref.read(databaseHelperProvider).database;
+    if (!mounted) return;
+    final rows = await db.query('preferencia', where: 'omitir = 0');
+    if (!mounted || rows.isEmpty) return;
+
+    if (ref.read(filterCarreraProvider) == null) {
+      ref
+          .read(filterCarreraProvider.notifier)
+          .select(rows.first['carrera_id'] as String);
+    }
     if (ref.read(filterSemestresProvider).isEmpty) {
-      for (final s in ref.read(selectedSemestresProvider)) {
-        ref.read(filterSemestresProvider.notifier).add(s);
+      for (final row in rows) {
+        ref.read(filterSemestresProvider.notifier).add(row['semestre'] as int);
       }
     }
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -118,10 +135,7 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
         : filterSemestres.map((s) => s.toString()).toSet();
     final selectedArea = filterArea == null ? {'Todas'} : {filterArea};
     final selectedTurno = filterTurno ?? 'Todos';
-    // filterSalon es String? (número como texto); FilterCard espera int?.
-    final selectedSalon = filterSalon == null
-        ? null
-        : int.tryParse(filterSalon);
+    final selectedSalon = filterSalon;
     return Container(
       height: double.infinity,
       width: double.infinity,
@@ -145,8 +159,14 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
                 children: [
                   // ─── Search bar ──────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    padding: EdgeInsets.only(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      bottom: MediaQuery.of(context).padding.bottom + 16,
+                    ),
                     child: AppSearchBar(
+                      controller: _searchController,
                       hint: 'Buscar materia...',
                       onFilterTap: () => FilterCard.show(
                         context,
@@ -191,23 +211,21 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
                           final n = ref.read(filterFechaProvider.notifier);
                           d == null ? n.clear() : n.select(d);
                         },
-                        // Salón: null limpia; el int se convierte a String para el provider.
                         onSalonChanged: (s) {
                           final n = ref.read(filterSalonProvider.notifier);
-                          s == null ? n.clear() : n.select(s.toString());
+                          s == null ? n.clear() : n.select(s);
                         },
                         onApply: () {},
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
                   // ─── Lista ───────────────────────────────────
                   Expanded(
                     child: CustomScrollView(
                       slivers: [
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -260,7 +278,7 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
                                     nombreMateria: examen.materia.nombre,
                                     profesor: examen.profesor.nombreCompleto,
                                     semestre: examen.materia.semestre,
-                                    salon: examen.salon.numeroSalon,
+                                    salon: examen.salon.etiquetaSalon ?? '',
                                     fecha: DateFormatter.formatDate(
                                       examen.fecha,
                                     ),
@@ -270,25 +288,34 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
                                         examen.turno.name.substring(1),
                                     status: status,
                                     barColor: areaColor,
-                                    onTap: () => context.push(
-                                      '/materia',
-                                      extra: MateriaData(
+                                    onTap: () {
+                                      FocusScope.of(context).unfocus();
+                                      context.push(
+                                        '/materia',
+                                        extra: MateriaData(
+                                        id: examen.id,
                                         nombre: examen.materia.nombre,
                                         profesor:
                                             examen.profesor.nombreCompleto,
+                                        emailProfesor: examen.profesor.correo,
                                         semestre: examen.materia.semestre,
-                                        salon: examen.salon.numeroSalon,
+                                        salon: examen.salon.etiquetaSalon ?? '',
                                         fecha: DateFormatter.formatDate(
                                           examen.fecha,
                                         ),
+                                        rawFecha: examen.fecha,
                                         hora: examen.hora,
                                         turno:
                                             examen.turno.name[0].toUpperCase() +
                                             examen.turno.name.substring(1),
                                         status: status,
                                         barColor: barColor,
+                                        guia: examen.documentoGuia,
+                                        proyecto: examen.documentoProyecto,
+                                        notas: examen.notas,
                                       ),
-                                    ),
+                                      );
+                                    },
                                   ),
                                 );
                               }, childCount: examenes.length),
@@ -301,13 +328,6 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
                       ],
                     ),
                   ),
-                  // ─── Botón principal ─────────────────────────
-                  AppPrimaryButton(
-                    label: 'Explorar ETS',
-                    width: MediaQuery.of(context).size.width * 0.9,
-                    onPressed: () {},
-                  ),
-                  const SizedBox(height: 10),
                 ],
               ),
             ),

@@ -27,10 +27,30 @@ class DatabaseHelper {
     final path = join(dbPath, 'gestion_ets.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: _onConfigure,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  // Crea la tabla preferencia si no existía (migración de v1 a v2).
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS preferencia (
+          omitir     INTEGER NOT NULL DEFAULT 0,
+          carrera_id TEXT NOT NULL,
+          semestre   INTEGER NOT NULL,
+          PRIMARY KEY (carrera_id, semestre)
+        )
+      ''');
+      await db.execute('''
+      CREATE TABLE  IF NOT EXISTS calendario (
+        examen_id TEXT PRIMARY KEY
+      )
+    ''');
+    }
   }
 
   // Activa las claves foráneas en SQLite (desactivadas por defecto en sqflite).
@@ -115,6 +135,21 @@ class DatabaseHelper {
         FOREIGN KEY (materia_id)  REFERENCES materias(id),
         FOREIGN KEY (salon_id)    REFERENCES salones(id),
         FOREIGN KEY (profesor_id) REFERENCES profesores(id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE preferencia (
+      omitir     INTEGER NOT NULL DEFAULT 0,
+      carrera_id TEXT NOT NULL,
+      semestre   INTEGER NOT NULL,
+      PRIMARY KEY (carrera_id, semestre)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE calendario (
+        examen_id TEXT PRIMARY KEY
       )
     ''');
   }

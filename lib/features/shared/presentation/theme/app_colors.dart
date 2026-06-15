@@ -74,6 +74,9 @@ class AppColors {
   static const Color navBarInactiveItem = Color(0xFFAAAAAA);
   static const Color navBarBackground = Color(0xFFFFFFFF);
 
+  // ─── Acento dorado ───────────────────────────────────────────────────────────
+  static const Color yellow = Color(0xFFFFCC00);
+
   // ─── Notificaciones ──────────────────────────────────────────────────────────
   static const Color notificationBadge = Color(0xFFF9A825);
 

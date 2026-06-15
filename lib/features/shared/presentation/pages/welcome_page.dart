@@ -6,11 +6,11 @@
 // ============================================================
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gestion_ets_escom/features/shared/data/datasources/local/database_helper.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_buttons.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
-import 'package:gestion_ets_escom/features/user/presentation/providers/examenes_providers.dart';
 import 'package:go_router/go_router.dart';
 
 class WelcomePage extends ConsumerWidget {
@@ -19,7 +19,7 @@ class WelcomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(carrerasProvider);
-  
+
     const double avatarRadius = 40;
     final double buttonWidth = MediaQuery.of(context).size.width * 0.9;
 
@@ -31,7 +31,7 @@ class WelcomePage extends ConsumerWidget {
           children: [
             // ─── Encabezado con patrón de fondo ─────────────────────────────────────────
             Container(
-              height: MediaQuery.of(context).size.height * 0.4,
+              height: MediaQuery.of(context).size.height * 0.5,
               color: AppColors.primaryDarkBlue,
               child: CustomPaint(
                 size: Size.infinite,
@@ -54,10 +54,10 @@ class WelcomePage extends ConsumerWidget {
                       ),
                     ),
                     padding: EdgeInsets.only(
-                      top: avatarRadius * 2,
+                      top: avatarRadius + 10,
                       left: 30,
                       right: 30,
-                      bottom: 30,
+                      bottom: MediaQuery.of(context).padding.bottom + 10
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -83,7 +83,19 @@ class WelcomePage extends ConsumerWidget {
                         AppPrimaryButton(
                           label: 'Comenzar',
                           width: buttonWidth,
-                          onPressed: () => context.push('/onboarding/carrera'),
+                          onPressed: () async {
+                            final db = await DatabaseHelper().database;
+                            final rows = await db.query(
+                              'preferencia',
+                              limit: 1,
+                            );
+                            if (!context.mounted) return;
+                            if (rows.isNotEmpty) {
+                              context.go('/inicio');
+                            } else {
+                              context.go('/onboarding/carrera');
+                            }
+                          },
                         ),
                         AppSecondaryButton( // O el nombre del widget que estés usando
                             label: 'Soy personal de Gestión',

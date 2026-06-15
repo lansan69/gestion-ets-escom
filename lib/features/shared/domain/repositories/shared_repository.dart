@@ -6,16 +6,17 @@
 // ============================================================
 import 'package:dartz/dartz.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/preferencia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/profesor.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/salon.dart';
 
 abstract class SharedRepository {
   // Catálogos
-  // Emite datos locales primero (caché), luego los datos remotos actualizados.
   Stream<Either<Failure, List<Carrera>>> getCarreras();
   Future<Either<Failure, List<Carrera>>> getCarreraById(String carreraId);
   Future<Either<Failure, List<Materia>>> getMaterias(String carreraId);
@@ -23,8 +24,6 @@ abstract class SharedRepository {
   Future<Either<Failure, List<Profesor>>> getProfesores();
 
   // Exámenes
-  // Emite datos locales primero (caché), luego los datos remotos actualizados.
-  // El filtro opcional se aplica a la consulta local para reducir los datos leídos.
   Stream<Either<Failure, List<Examen>>> getExamenes([ExamenFilter? filter]);
   Future<Either<Failure, List<Examen>>> searchExamenes({
     String? carreraId,
@@ -35,4 +34,18 @@ abstract class SharedRepository {
     String? searchTerm,
   });
   Future<Either<Failure, Examen>> getExamenById(String id);
+
+  // Preferencia local
+  Future<Either<Failure, bool>> hasPreferencia();
+  Future<Either<Failure, Preferencia?>> getPreferencia();
+  Future<Either<Failure, void>> savePreferencia(Preferencia preferencia);
+
+  // Calendario local
+  Future<Either<Failure, void>> addToCalendario(String examenId, String color);
+  Future<Either<Failure, bool>> isInCalendario(String examenId);
+  Future<Either<Failure, List<CalendarioExamen>>> getCalendarioExamenes();
+  Future<Either<Failure, void>> removeFromCalendario(String examenId);
+
+  // Limpia preferencias y calendario del usuario.
+  Future<Either<Failure, void>> clearCache();
 }

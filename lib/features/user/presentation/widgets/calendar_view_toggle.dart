@@ -14,11 +14,12 @@ class CalendarViewToggle extends ConsumerWidget {
     const inactiveColor = Color(0xFFD4E1F5); // Azul pálido
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40.0), // Ajuste de padding centrado
+      padding: const EdgeInsets.symmetric(horizontal: 30.0), // Ajuste de padding centrado
       child: Container(
+        height: kToolbarHeight - 8,
         decoration: BoxDecoration(
           color: inactiveColor,
-          borderRadius: BorderRadius.circular(16), // Menos redondeado que el diseño anterior
+          borderRadius: BorderRadius.circular(30), // Menos redondeado que el diseño anterior
         ),
         child: Row(
           children: [
@@ -36,10 +37,10 @@ class CalendarViewToggle extends ConsumerWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isActive ? activeColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(30),
           ),
           child: Text(
             text,

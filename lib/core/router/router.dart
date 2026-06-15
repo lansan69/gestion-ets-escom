@@ -1,14 +1,18 @@
 // ============================================================
 // NOMBRE: router.dart
 // USO: Define el GoRouter principal de la aplicación con todas
-//      las rutas (onboarding, shell con tabs, detalle de materia).
+//      las rutas (splash, onboarding, shell con tabs, detalle de materia).
 //      Registrado en main.dart mediante MaterialApp.router.
+//      La lógica de redirección inicial vive en SplashPage, que
+//      consulta SQLite y navega al destino correcto.
 // ============================================================
 import 'package:flutter/material.dart';
+import 'package:gestion_ets_escom/features/shared/presentation/pages/splash_page.dart';
 import 'package:gestion_ets_escom/features/user/presentation/pages/explore_exams.dart';
+import 'package:gestion_ets_escom/features/user/presentation/pages/salones_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gestion_ets_escom/core/router/app_shell.dart';
-import 'package:gestion_ets_escom/features/shared/presentation/welcome_page.dart';
+import 'package:gestion_ets_escom/features/shared/presentation/pages/welcome_page.dart';
 import 'package:gestion_ets_escom/features/user/presentation/pages/individual_materia_view.dart';
 import 'package:gestion_ets_escom/features/user/presentation/pages/onboarding_carrera.dart';
 import 'package:gestion_ets_escom/features/user/presentation/pages/onboarding_semestre.dart';
@@ -21,8 +25,9 @@ import 'package:gestion_ets_escom/features/user/presentation/pages/calendar_page
 import 'package:gestion_ets_escom/features/user/presentation/pages/settings_page.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/bienvenida',
+  initialLocation: '/splash',
   routes: [
+    GoRoute(path: '/splash', builder: (_, _) => const SplashPage()),
     GoRoute(path: '/bienvenida', builder: (_, _) => const WelcomePage()),
     
     // 2. Agrega la ruta de login del administrador aquí, en el nivel superior
@@ -30,7 +35,6 @@ final GoRouter appRouter = GoRouter(
       path: '/admin/login',
       builder: (_, _) => const AdminLoginPage(),
     ),
-    // --- NUEVO BLOQUE DEL ADMINISTRADOR ---
     // --- NUEVO BLOQUE DEL ADMINISTRADOR ---
     ShellRoute(
       builder: (_, _, child) => AdminShell(child: child),
@@ -52,12 +56,27 @@ final GoRouter appRouter = GoRouter(
     ),
     // -------------------------------------
     GoRoute(
-      path: '/onboarding/semestre',
-      builder: (_, _) => const OnBoardingSemestre(),
-    ),
-    GoRoute(
       path: '/onboarding/carrera',
       builder: (_, _) => const OnBoardingCarrera(),
+    ),
+    GoRoute(
+      path: '/onboarding/semestre',
+      builder: (_, state) =>
+          OnBoardingSemestre(carreraId: state.extra as String?),
+    ),
+    GoRoute(
+      path: '/settings/preferencias/carrera',
+      builder: (_, _) => const OnBoardingCarrera(isEditing: true),
+    ),
+    GoRoute(
+      path: '/settings/preferencias/semestre',
+      builder: (_, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        return OnBoardingSemestre(
+          carreraId: extra['carreraId'] as String?,
+          isEditing: true,
+        );
+      },
     ),
     GoRoute(
       path: '/materia',
@@ -72,6 +91,7 @@ final GoRouter appRouter = GoRouter(
           path: '/calendario',
           builder: (_, _) => const CalendarPage(), // <-- Reemplazo aquí
         ),
+        GoRoute(path: '/salones', builder: (_, _) => const SalonesPage()),
         GoRoute(
           path: '/config',
           builder: (_, _) => const SettingsPage(), // <-- Reemplazo aquí

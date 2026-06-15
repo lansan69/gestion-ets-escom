@@ -11,10 +11,13 @@ import 'package:flutter/foundation.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/shared_local_datasource.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/shared_remote_datasource.dart';
+import 'package:gestion_ets_escom/features/shared/data/models/preferencia_model.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/preferencia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/profesor.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/salon.dart';
 import 'package:gestion_ets_escom/features/shared/domain/repositories/shared_repository.dart';
@@ -146,6 +149,91 @@ class SharedRepositoryImpl implements SharedRepository {
       return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(const ServerFailure('Ocurrió un error inesperado'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> hasPreferencia() async {
+    try {
+      return Right(await local.hasPreferencia());
+    } catch (_) {
+      return const Right(false);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Preferencia?>> getPreferencia() async {
+    try {
+      final model = await local.getPreferencia();
+      return Right(model?.toEntity());
+    } catch (e) {
+      return Left(const CacheFailure('No se pudo leer la preferencia'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> savePreferencia(Preferencia preferencia) async {
+    try {
+      await local.savePreferencia(PreferenciaModel(
+        omitir: preferencia.omitir,
+        carreraId: preferencia.carreraId,
+        seleccion1Semestre: preferencia.seleccion1Semestre,
+        seleccion2Semestre: preferencia.seleccion2Semestre,
+        seleccion3Semestre: preferencia.seleccion3Semestre,
+      ));
+      return const Right(null);
+    } catch (e) {
+      return Left(const CacheFailure('No se pudo guardar la preferencia'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> addToCalendario(String examenId, String color) async {
+    try {
+      await local.addToCalendario(examenId, color);
+      return const Right(null);
+    } catch (e) {
+      return Left(const ServerFailure('No se pudo guardar. Intenta de nuevo'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> isInCalendario(String examenId) async {
+    try {
+      final result = await local.isInCalendario(examenId);
+      return Right(result);
+    } catch (e) {
+      return const Right(false);
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<CalendarioExamen>>> getCalendarioExamenes() async {
+    try {
+      final result = await local.getCalendarioExamenes();
+      return Right(result);
+    } catch (e) {
+      return Left(const ServerFailure('No se pudieron cargar los exámenes del calendario'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> removeFromCalendario(String examenId) async {
+    try {
+      await local.removeFromCalendario(examenId);
+      return const Right(null);
+    } catch (e) {
+      return Left(const ServerFailure('No se pudo eliminar. Intenta de nuevo'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> clearCache() async {
+    try {
+      await local.clearCache();
+      return const Right(null);
+    } catch (_) {
+      return Left(const CacheFailure('No se pudo limpiar el caché'));
     }
   }
 }

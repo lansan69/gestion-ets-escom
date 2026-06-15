@@ -16,7 +16,7 @@ class CardExamenMateria extends StatelessWidget {
   final String nombreMateria;
   final String profesor;
   final int semestre;
-  final int salon;
+  final String salon;
   final String fecha;
   final String hora;
   final String turno;

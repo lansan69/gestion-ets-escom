@@ -24,14 +24,14 @@ class FilterCard extends StatefulWidget {
   final Set<String> selectedArea;
   final String selectedTurno;
   final DateTime? selectedFecha;
-  final int? selectedSalon;
+  final String? selectedSalon;
 
   final ValueChanged<Set<String>> onCarrerasChanged;
   final ValueChanged<Set<String>> onSemestresChanged;
   final ValueChanged<Set<String>> onAreaChanged;
   final ValueChanged<String> onTurnoChanged;
   final ValueChanged<DateTime?> onFechaChanged;
-  final ValueChanged<int?> onSalonChanged;
+  final ValueChanged<String?> onSalonChanged;
   final VoidCallback onApply;
   final ScrollController? scrollController;
 
@@ -66,18 +66,22 @@ class FilterCard extends StatefulWidget {
     required Set<String> selectedArea,
     required String selectedTurno,
     DateTime? selectedFecha,
-    int? selectedSalon,
+    String? selectedSalon,
     required ValueChanged<Set<String>> onCarrerasChanged,
     required ValueChanged<Set<String>> onSemestresChanged,
     required ValueChanged<Set<String>> onAreaChanged,
     required ValueChanged<String> onTurnoChanged,
     required ValueChanged<DateTime?> onFechaChanged,
-    required ValueChanged<int?> onSalonChanged,
+    required ValueChanged<String?> onSalonChanged,
     required VoidCallback onApply,
   }) {
+    // Unfocus whatever was focused before (e.g. search bar) so closing the
+    // sheet doesn't restore focus to it and pop the keyboard up again.
+    FocusManager.instance.primaryFocus?.unfocus();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) => DraggableScrollableSheet(
         initialChildSize: 0.65,
@@ -148,6 +152,7 @@ class _FilterCardState extends State<FilterCard>
   late String _turno;
   DateTime? _fecha;
   late final TextEditingController _salonController;
+  late final FocusNode _salonFocusNode;
 
   late final AnimationController _entranceCtrl;
 
@@ -164,9 +169,9 @@ class _FilterCardState extends State<FilterCard>
     _area = Set.from(widget.selectedArea);
     _turno = widget.selectedTurno;
     _fecha = widget.selectedFecha;
-    _salonController = TextEditingController(
-      text: widget.selectedSalon?.toString() ?? '',
-    );
+    _salonController = TextEditingController(text: widget.selectedSalon ?? '');
+    _salonFocusNode = FocusNode(skipTraversal: true)
+      ..addListener(_onSalonFocus);
 
     _entranceCtrl = AnimationController(
       vsync: this,
@@ -201,6 +206,7 @@ class _FilterCardState extends State<FilterCard>
   void dispose() {
     _entranceCtrl.dispose();
     _salonController.dispose();
+    _salonFocusNode.dispose();
     super.dispose();
   }
 
@@ -257,6 +263,26 @@ class _FilterCardState extends State<FilterCard>
 
   void _clearFecha() => setState(() => _fecha = null);
 
+  void _onSalonFocus() {
+    if (!_salonFocusNode.hasFocus) return;
+    // Wait for the keyboard animation to finish (~300 ms on most devices),
+    // then queue a post-frame callback so the layout has rebuilt with the
+    // updated viewInsets.bottom padding before we read maxScrollExtent.
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctrl = widget.scrollController;
+        if (ctrl != null && ctrl.hasClients) {
+          ctrl.animateTo(
+            ctrl.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    });
+  }
+
   String _formatDate(DateTime d) => '${d.day} ${_meses[d.month - 1]} ${d.year}';
 
   // Notifica los filtros seleccionados al padre y cierra el bottom sheet.
@@ -267,9 +293,7 @@ class _FilterCardState extends State<FilterCard>
     widget.onTurnoChanged(_turno);
     widget.onFechaChanged(_fecha);
     widget.onSalonChanged(
-      _salonController.text.isEmpty
-          ? null
-          : int.tryParse(_salonController.text),
+      _salonController.text.isEmpty ? null : _salonController.text,
     );
     debugPrint('carrera: ${_carrera}');
     debugPrint('semestres: ${_semestres}');
@@ -346,7 +370,12 @@ class _FilterCardState extends State<FilterCard>
           Expanded(
             child: ListView(
               controller: widget.scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                0,
+                20,
+                MediaQuery.of(context).viewInsets.bottom * 0.7,
+              ),
               children: [
                 _AnimatedSection(
                   fade: _fadeAnims[0],
@@ -406,14 +435,22 @@ class _FilterCardState extends State<FilterCard>
                 _AnimatedSection(
                   fade: _fadeAnims[5],
                   slide: _slideAnims[5],
-                  child: _FilterSalonSection(controller: _salonController),
+                  child: _FilterSalonSection(
+                    controller: _salonController,
+                    focusNode: _salonFocusNode,
+                  ),
                 ),
               ],
             ),
           ),
           // ─── Botones fijos al fondo ───────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            padding: EdgeInsets.only(
+              top: 8,
+              left: 20,
+              right: 20,
+              bottom: MediaQuery.of(context).padding.bottom + 8,
+            ),
             child: Column(
               children: [
                 AppPrimaryButton(
@@ -725,8 +762,12 @@ class _FilterDateSection extends StatelessWidget {
 // ─── Sección de número de salón ───────────────────────────────────────────────
 class _FilterSalonSection extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode focusNode;
 
-  const _FilterSalonSection({required this.controller});
+  const _FilterSalonSection({
+    required this.controller,
+    required this.focusNode,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -743,39 +784,50 @@ class _FilterSalonSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(4),
-          ],
-          style: const TextStyle(fontSize: 13),
-          decoration: InputDecoration(
-            hintText: 'Cualquiera',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-            suffixIcon: Icon(
-              Icons.meeting_room_outlined,
-              color: Colors.grey.shade400,
-              size: 18,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 10,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primaryDarkBlue,
-                width: 1.5,
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (context, value, _) => TextField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: TextInputType.text,
+            inputFormatters: [LengthLimitingTextInputFormatter(20)],
+            style: const TextStyle(fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Cualquiera',
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+              suffixIcon: value.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        color: Colors.grey.shade500,
+                        size: 18,
+                      ),
+                      splashRadius: 16,
+                      onPressed: controller.clear,
+                    )
+                  : Icon(
+                      Icons.meeting_room_outlined,
+                      color: Colors.grey.shade400,
+                      size: 18,
+                    ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppColors.primaryDarkBlue,
+                  width: 1.5,
+                ),
               ),
             ),
           ),

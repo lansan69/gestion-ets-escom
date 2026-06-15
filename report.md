@@ -160,11 +160,21 @@ Modelos de datos que mapean JSON de Supabase a entidades de dominio.
 | `shared_remote_datasource.dart` | Contrato abstracto del datasource remoto compartido |
 | `shared_remote_datasource_impl.dart` | Implementación con Supabase. Define el fragmento SELECT con JOINs, aplica filtros de carrera, semestre, área y texto en la query |
 
+### lib/features/shared/data/datasources/local/
+
+Capa de persistencia local con SQLite via `sqflite`. Permite uso **offline-first**.
+
+| Archivo | Descripción |
+|---|---|
+| `database_helper.dart` | Singleton que inicializa la BD `gestion_ets.db`. Crea 6 tablas con claves foráneas activadas: `areas_formacion`, `carreras`, `materias`, `salones`, `profesores`, `examenes` |
+| `shared_local_datasource.dart` | Contrato abstracto: `getCarreras`, `getAreasFormacion`, `getExamenes(filter)`, `upsertCarreras`, `upsertAreasFormacion`, `upsertExamenes` |
+| `shared_local_datasource_impl.dart` | Implementación con sqflite. `getExamenes` ejecuta un JOIN completo con alias para reconstruir todos los objetos anidados y aplica filtros opcionales de carrera y semestres via `WHERE`. `upsertExamenes` inserta en orden FK-safe: áreas → carreras → materias → salones → profesores → exámenes, todo en un `batch` atómico |
+
 ### lib/features/shared/data/repositories/
 
 | Archivo | Descripción |
 |---|---|
-| `shared_repository_impl.dart` | Implementa `SharedRepository`. Delega al datasource y mapea `PostgrestException` a `Failure` |
+| `shared_repository_impl.dart` | Implementa `SharedRepository` con estrategia **offline-first**. `getCarreras` y `getExamenes` son `Stream`: emiten el caché local inmediatamente y luego, si hay red, descargan de Supabase, actualizan el caché y re-emiten. Sin red el stream termina silenciosamente con los datos locales |
 
 ### lib/features/shared/presentation/
 
@@ -184,7 +194,7 @@ Widgets reutilizables entre features.
 |---|---|
 | `app_buttons.dart` | `AppPrimaryButton`, `AppSecondaryButton` y `AppAnimatedPress` (wrapper con animación de escala) |
 | `app_search_bar.dart` | Barra de búsqueda con campo de texto y botón de filtros. Abre `FilterCard` al presionar el ícono |
-| `filter_card.dart` | Bottom sheet deslizable con filtros de carrera (chips), semestre (chips), área (chips), turno (radio chips), fecha (date picker) y salón (input numérico). Comunica cambios al padre vía callbacks |
+| `filter_card.dart` | Bottom sheet deslizable con filtros de carrera (chips), semestre (chips), área (chips), turno (chips), fecha (date picker) y salón (input de texto libre con botón de limpiar). El filtro de salón usa comparación `ilike` (contains case-insensitive). Usa `useRootNavigator: true` para superponerse sobre la barra de navegación. Gestiona el foco del campo de salón con `FocusNode(skipTraversal)` para evitar que el teclado aparezca al abrir/cerrar el sheet, y hace auto-scroll al campo cuando el usuario lo activa |
 | `card_materia.dart` | Tarjeta compacta de examen ETS con barra de color por estado/área, nombre, profesor, semestre, salón, fecha y hora |
 | `card_materia_expanded.dart` | Tarjeta expandida de examen con sección de documentos PDF descargables |
 | `career_card.dart` | Tarjeta informativa de carrera (sin estado seleccionable) |
@@ -211,9 +221,9 @@ Feature del usuario final (estudiante). Solo lectura; sin operaciones de escritu
 | Archivo | Descripción |
 |---|---|
 | `selection_providers.dart` | `SelectedCarreraNotifier` (String? UUID) y `SelectedSemestresNotifier` (List<int>, máx 3). Estado de la selección durante el onboarding |
-| `carrera_providers.dart` | `FutureProvider` que carga la lista de carreras desde Supabase via el caso de uso `GetCarreras` |
-| `filter_providers.dart` | Un `Notifier` + `NotifierProvider` por cada campo de filtro de búsqueda: `FilterCarreraNotifier` (String?), `FilterSemestresNotifier` (List<int>), `FilterAreaNotifier` (String?), `FilterTurnoNotifier` (String?), `FilterFechaNotifier` (DateTime?), `FilterSalonNotifier` (String?) |
-| `examenes_providers.dart` | `getExamenesProvider` expone el caso de uso. `_allExamenesProvider` hace la carga única desde Supabase. `examenesProvider` aplica todos los filtros en memoria sobre el array completo y devuelve `AsyncValue<List<Examen>>` |
+| `carrera_providers.dart` | `StreamProvider` offline-first que emite carreras desde caché local y luego desde Supabase. También expone `areasFormacionProvider` derivado de los exámenes ya cargados |
+| `filter_providers.dart` | Un `Notifier` + `NotifierProvider` por cada campo de filtro: `FilterCarreraNotifier` (String? UUID), `FilterSemestresNotifier` (List<int>), `FilterAreaNotifier` (String? UUID), `FilterTurnoNotifier` (String?), `FilterFechaNotifier` (DateTime?), `FilterSalonNotifier` (String?), `FilterSearchbarNotifier` (String?) |
+| `examenes_providers.dart` | `_allExamenesProvider` es un `StreamProvider` offline-first: emite caché local, luego descarga todo desde Supabase y re-emite. `examenesProvider` aplica en memoria los 6 filtros activos (carrera, semestres, área, turno, fecha, salón por `ilike`, búsqueda por nombre de materia/profesor) y devuelve `AsyncValue<List<Examen>>` |
 
 ### lib/features/user/presentation/pages/
 
@@ -221,8 +231,8 @@ Feature del usuario final (estudiante). Solo lectura; sin operaciones de escritu
 |---|---|
 | `onboarding_carrera.dart` | Paso 1 del onboarding. Muestra `SelectableCareerCard` por carrera; guarda la selección en `selectedCarreraProvider`. Ruta: `/onboarding/carrera` |
 | `onboarding_semestre.dart` | Paso 2 del onboarding. Muestra `SemestreCard` con límite de 3 semestres; guarda en `selectedSemestresProvider`. Ruta: `/onboarding/semestre` |
-| `explore_exams.dart` | Pantalla principal del usuario. Lee los seis `filterProviders` con `ref.watch`, los convierte al formato que espera `FilterCard` y pasa los resultados filtrados de `examenesProvider` a `CardExamenMateria`. Ruta: `/inicio` |
-| `individual_materia_view.dart` | Detalle de un examen individual. Muestra `CardExamenMateriaExpanded` con toda la información y documentos. Ruta: `/materia` |
+| `explore_exams.dart` | Pantalla principal del usuario. Lee los siete `filterProviders` con `ref.watch`, los convierte al formato de `FilterCard` y pasa los resultados filtrados de `examenesProvider` a `CardExamenMateria`. Al navegar a `/materia` construye `MateriaData` incluyendo `rawFecha` y `emailProfesor`. Ruta: `/inicio` |
+| `individual_materia_view.dart` | Detalle de un examen. `MateriaData` lleva `fecha` (String display) y `rawFecha` (DateTime) para cálculo correcto de días restantes sin parsear strings. Muestra el header coloreado con banner de status, y cards individuales para nombre del profesor, correo, archivos y notas. El body es un `CustomScrollView` con `SliverFillRemaining` para soporte de scroll cuando el contenido excede la pantalla. Ruta: `/materia` |
 
 ---
 
@@ -287,17 +297,23 @@ Feature del administrador (personal ESCOM). Operaciones de escritura sobre la DB
 
 ```
 Supabase
-  └── SharedRemoteDatasourceImpl   (SQL + JOINs)
-        └── SharedRepositoryImpl   (Either<Failure, T>)
-              └── GetExamenes      (caso de uso)
-                    └── _allExamenesProvider   (carga única, FutureProvider)
-                          └── examenesProvider  (filtra en memoria, Provider<AsyncValue>)
+  └── SharedRemoteDatasourceImpl     (SQL + JOINs)
+        └── SharedRepositoryImpl     (Stream<Either<Failure, T>>, offline-first)
+              │   ↕ caché local (SQLite via sqflite)
+              └── SharedLocalDatasourceImpl
+                    └── DatabaseHelper  (gestion_ets.db, 6 tablas con FK)
+              └── GetExamenes          (caso de uso, devuelve Stream)
+                    └── _allExamenesProvider   (StreamProvider, emite local → remoto)
+                          └── examenesProvider  (filtra 7 criterios en memoria, Provider<AsyncValue>)
                                 ↑ watch
-                          filter_providers.dart  (6 Notifiers independientes)
+                          filter_providers.dart  (7 Notifiers: carrera, semestres, área,
+                                                   turno, fecha, salón, searchbar)
                                 ↑ callbacks
-                          FilterCard            (bottom sheet con chips, date picker, input)
+                          FilterCard            (bottom sheet, chips + date picker + salón ilike)
                                 ↑ onFilterTap
-                          AppSearchBar
+                          AppSearchBar          (búsqueda con debounce 300 ms)
                                 ↑ widget
                           ExploreExams          (pantalla principal)
+                                ↓ context.push('/materia', extra: MateriaData)
+                          IndividualMateriaView (detalle con rawFecha para cálculo de días)
 ```

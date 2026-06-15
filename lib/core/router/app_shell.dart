@@ -29,6 +29,12 @@ class AppShell extends StatelessWidget {
       label: 'Calendario',
     ),
     (
+      path: '/salones',
+      icon: Icons.meeting_room_outlined,
+      activeIcon: Icons.meeting_room,
+      label: 'Salones',
+    ),
+    (
       path: '/config',
       icon: Icons.settings_outlined,
       activeIcon: Icons.settings,
@@ -47,6 +53,7 @@ class AppShell extends StatelessWidget {
     if (location.startsWith('/inicio')) return 'Mis Materias';
     if (location.startsWith('/explorar')) return 'Explorar';
     if (location.startsWith('/calendario')) return 'Calendario';
+    if (location.startsWith('/salones')) return 'Salones';
     if (location.startsWith('/config')) return 'Configuración';
     if (location.startsWith('/materia') && extra is MateriaData) {
       return extra.nombre;
@@ -62,15 +69,21 @@ class AppShell extends StatelessWidget {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: (location.startsWith('/calendario') || location.startsWith('/config'))
-        ? null // Si estamos en calendario, no pintamos este AppBar
-        : AppBar(
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.pop(),
+      appBar: AppBar(
+        automaticallyImplyLeading: true,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _title(location, state.extra),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
             ),
-        automaticallyImplyLeading: false,
-        title: Text(_title(location, state.extra)),
+            Text(
+              'ETS ESCOM · Sem. 2026-1',
+              style: TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ],
+        ),
         foregroundColor: Colors.white,
         backgroundColor: Colors.transparent,
         elevation: 0,

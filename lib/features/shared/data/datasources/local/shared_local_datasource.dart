@@ -8,25 +8,37 @@
 import 'package:gestion_ets_escom/features/shared/data/models/area_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/carrera_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/examen_model.dart';
+import 'package:gestion_ets_escom/features/shared/data/models/preferencia_model.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_entry.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
 
 abstract class SharedLocalDatasource {
-  // Lee las carreras almacenadas en el caché local.
   Future<List<CarreraModel>> getCarreras();
-
-  // Lee las áreas de formación almacenadas en el caché local.
   Future<List<AreaFormacionModel>> getAreasFormacion();
-
-  // Lee los exámenes del caché aplicando filtros de carrera y semestres via WHERE.
   Future<List<ExamenModel>> getExamenes(ExamenFilter filter);
-
-  // Inserta o reemplaza carreras en el caché local en lote.
   Future<void> upsertCarreras(List<CarreraModel> carreras);
-
-  // Inserta o reemplaza áreas de formación en el caché local en lote.
   Future<void> upsertAreasFormacion(List<AreaFormacionModel> areas);
-
-  // Inserta o reemplaza exámenes y todos sus objetos relacionados en el caché local.
-  // Guarda TODOS los semestres presentes en la lista, sin filtrar por selección activa.
   Future<void> upsertExamenes(List<ExamenModel> examenes);
+  Future<bool> hasPreferencia();
+  Future<PreferenciaModel?> getPreferencia();
+  Future<void> savePreferencia(PreferenciaModel model);
+
+  // Guarda un examen en el calendario local con el color elegido por el usuario.
+  Future<void> addToCalendario(String examenId, String color);
+
+  // Devuelve true si el examen ya está guardado en el calendario local.
+  Future<bool> isInCalendario(String examenId);
+
+  // Lee todas las entradas del calendario (examen_id + color).
+  Future<List<CalendarioEntry>> getCalendario();
+
+  // Lee los exámenes guardados en el calendario con JOIN completo.
+  Future<List<CalendarioExamen>> getCalendarioExamenes();
+
+  // Elimina un examen del calendario local.
+  Future<void> removeFromCalendario(String examenId);
+
+  // Borra todas las filas de preferencia y calendario (reset de datos del usuario).
+  Future<void> clearCache();
 }

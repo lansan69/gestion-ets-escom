@@ -5,12 +5,16 @@
 //      de DatabaseHelper. Consumido por SharedRepositoryImpl.
 // ============================================================
 
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/database_helper.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/shared_local_datasource.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/area_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/carrera_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/examen_model.dart';
+import 'package:gestion_ets_escom/features/shared/data/models/preferencia_model.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_entry.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
 
 class SharedLocalDatasourceImpl implements SharedLocalDatasource {
@@ -53,8 +57,9 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
       args.addAll(filter.semestres);
     }
 
-    final whereClause =
-        whereClauses.isEmpty ? '' : 'WHERE ${whereClauses.join(' AND ')}';
+    final whereClause = whereClauses.isEmpty
+        ? ''
+        : 'WHERE ${whereClauses.join(' AND ')}';
 
     // Se usan alias para evitar colisiones de nombres entre tablas.
     final rows = await db.rawQuery('''
@@ -88,7 +93,8 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
 
         p.id            AS p_id,
         p.nombre        AS p_nombre,
-        p.primer_apellido,             p.segundo_apellido,
+        p.primer_apellido,             
+        p.segundo_apellido,
         p.correo,
         p.activo        AS p_activo,
 
@@ -105,8 +111,8 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
       INNER JOIN profesores    p    ON e.profesor_id         = p.id
       LEFT  JOIN areas_formacion af_p ON p.area_formacion_id = af_p.id
       $whereClause
+      ORDER BY e.fecha ASC, e.hora ASC
     ''', args);
-
     return rows.map((row) => ExamenModel.fromMap(row)).toList();
   }
 
@@ -223,6 +229,152 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
       );
     }
 
+    await batch.commit(noResult: true);
+  }
+
+  @override
+  Future<bool> hasPreferencia() async {
+    final db = await dbHelper.database;
+    final rows = await db.query('preferencia', limit: 1);
+    return rows.isNotEmpty;
+  }
+
+  @override
+  Future<PreferenciaModel?> getPreferencia() async {
+    final db = await dbHelper.database;
+    final rows = await db.query(
+      'preferencia',
+      where: 'omitir = 0',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return PreferenciaModel.fromMap(rows.first);
+  }
+
+  @override
+  Future<void> savePreferencia(PreferenciaModel model) async {
+    final db = await dbHelper.database;
+    await db.insert(
+      'preferencia',
+      model.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  @override
+  Future<void> addToCalendario(String examenId, String color) async {
+    final db = await dbHelper.database;
+    await db.rawInsert(
+      'INSERT OR REPLACE INTO calendario (examen_id, color) VALUES (?, ?)',
+      [examenId, color],
+    );
+  }
+
+  @override
+  Future<bool> isInCalendario(String examenId) async {
+    final db = await dbHelper.database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS cnt FROM calendario WHERE examen_id = ?',
+      [examenId],
+    );
+    return (result.first['cnt'] as int) > 0;
+  }
+
+  @override
+  Future<List<CalendarioEntry>> getCalendario() async {
+    final db = await dbHelper.database;
+    final rows = await db.query('calendario');
+    return rows
+        .map((r) => CalendarioEntry(
+              examenId: r['examen_id'] as String,
+              color: r['color'] as String,
+            ))
+        .toList();
+  }
+
+  @override
+  Future<List<CalendarioExamen>> getCalendarioExamenes() async {
+    final db = await dbHelper.database;
+
+    // Same JOIN alias structure as getExamenes, joined with calendario.
+    final rows = await db.rawQuery('''
+      SELECT
+        cal.color       AS cal_color,
+
+        e.id            AS e_id,
+        e.fecha,        e.hora,        e.turno,
+        e.documento_guia,              e.documento_proyecto,
+        e.notas,
+        e.activo        AS e_activo,
+        e.creado_en,    e.actualizado_en,
+
+        m.id            AS m_id,
+        m.nombre        AS m_nombre,
+        m.semestre,
+        m.activo        AS m_activo,
+
+        c.id            AS c_id,
+        c.nombre        AS c_nombre,
+        c.abreviatura,  c.plan,
+        c.activo        AS c_activo,
+
+        af_m.id         AS af_m_id,
+        af_m.nombre     AS af_m_nombre,
+        af_m.color      AS af_m_color,
+        af_m.activo     AS af_m_activo,
+
+        s.id            AS s_id,
+        s.edificio,     s.piso,        s.numero_salon,
+        s.etiqueta_salon,
+        s.activo        AS s_activo,
+
+        p.id            AS p_id,
+        p.nombre        AS p_nombre,
+        p.primer_apellido,
+        p.segundo_apellido,
+        p.correo,
+        p.activo        AS p_activo,
+
+        af_p.id         AS af_p_id,
+        af_p.nombre     AS af_p_nombre,
+        af_p.color      AS af_p_color,
+        af_p.activo     AS af_p_activo
+
+      FROM calendario cal
+      INNER JOIN examenes      e    ON e.id                  = cal.examen_id
+      INNER JOIN materias      m    ON e.materia_id          = m.id
+      INNER JOIN carreras      c    ON m.carrera_id          = c.id
+      LEFT  JOIN areas_formacion af_m ON m.area_formacion_id = af_m.id
+      INNER JOIN salones       s    ON e.salon_id            = s.id
+      INNER JOIN profesores    p    ON e.profesor_id         = p.id
+      LEFT  JOIN areas_formacion af_p ON p.area_formacion_id = af_p.id
+      ORDER BY e.fecha ASC, e.hora ASC
+    ''');
+
+    return rows
+        .map((row) => CalendarioExamen(
+              examen: ExamenModel.fromMap(row).toEntity(),
+              color: row['cal_color'] as String,
+            ))
+        .toList();
+  }
+
+  @override
+  Future<void> removeFromCalendario(String examenId) async {
+    final db = await dbHelper.database;
+    await db.delete(
+      'calendario',
+      where: 'examen_id = ?',
+      whereArgs: [examenId],
+    );
+  }
+
+  @override
+  Future<void> clearCache() async {
+    final db = await dbHelper.database;
+    final batch = db.batch();
+    batch.delete('preferencia');
+    batch.delete('calendario');
     await batch.commit(noResult: true);
   }
 }

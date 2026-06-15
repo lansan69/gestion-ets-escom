@@ -142,3 +142,20 @@ class FilterSalonNotifier extends Notifier<String?> {
 final filterSalonProvider = NotifierProvider<FilterSalonNotifier, String?>(
   FilterSalonNotifier.new,
 );
+
+// ─── Search input ─────────────────────────────────────────────────────────────
+class FilterSearchbarNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  // Establece el salón a filtrar a partir de su ID.
+  void select(String id) => state = id;
+
+  // Limpia el filtro de salón.
+  void clear() => state = null;
+}
+
+final filterSearchbarProvider =
+    NotifierProvider<FilterSearchbarNotifier, String?>(
+      FilterSearchbarNotifier.new,
+    );

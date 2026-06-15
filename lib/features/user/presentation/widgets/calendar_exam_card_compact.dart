@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-// import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
 
-class CalendarExamCard extends StatelessWidget {
-  // final Examen examen;
-  // Usa tu entidad real, esto es un mock basado en tu diseño
+class CalendarExamCardCompact extends StatelessWidget {
   final DateTime fecha;
   final String materia;
-  final String detalles;
+  final String salon;
+  final String hora;
   final Color colorClave;
+  final VoidCallback? onRemove;
 
-  const CalendarExamCard({
+  const CalendarExamCardCompact({
     super.key,
     required this.fecha,
     required this.materia,
-    required this.detalles,
+    required this.salon,
+    required this.hora,
     required this.colorClave,
+    this.onRemove,
   });
 
   @override
@@ -23,20 +24,21 @@ class CalendarExamCard extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade200),
       ),
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      margin: const EdgeInsets.all(4),
       child: Padding(
-        padding: const EdgeInsets.all(10.0),
+        padding: const EdgeInsets.all(8),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: colorClave,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -45,37 +47,50 @@ class CalendarExamCard extends StatelessWidget {
                     DateFormat('dd').format(fecha),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
+                      height: 1.1,
                     ),
                   ),
                   Text(
                     DateFormat('MMM').format(fecha),
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: const TextStyle(color: Colors.white, fontSize: 10),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     materia,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
-                    detalles,
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    'Sal. $salon • $hora',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
                   ),
                 ],
               ),
             ),
+            if (onRemove != null)
+              IconButton(
+                onPressed: onRemove,
+                icon: Icon(Icons.delete_outline,
+                    color: Colors.grey.shade400, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                splashRadius: 16,
+              ),
           ],
         ),
       ),

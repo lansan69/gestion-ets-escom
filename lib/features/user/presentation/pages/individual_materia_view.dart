@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/providers/core_providers.dart';
 import 'package:gestion_ets_escom/core/services/launcher_service.dart';
+import 'package:gestion_ets_escom/features/shared/presentation/elements/color_picker_dialog.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/card_materia_expanded.dart';
@@ -26,7 +27,7 @@ class MateriaData {
   final String id;
   final String nombre;
   final String profesor;
-  final String? emailProfesor; // ← nuevo (nullable hasta tener dato real)
+  final String? emailProfesor;
   final int semestre;
   final String salon;
   final String fecha;
@@ -35,7 +36,10 @@ class MateriaData {
   final String turno;
   final EtsStatus status;
   final Color barColor;
-  final String? guia; // nullable — solo se muestra si tiene valor
+  // Hex color del área de formación (#RRGGBB). Se usa como selección por
+  // defecto en el color picker del calendario.
+  final String? areaFormacionColor;
+  final String? guia;
   final String? proyecto;
   final String? notas;
 
@@ -52,6 +56,7 @@ class MateriaData {
     required this.turno,
     required this.status,
     required this.barColor,
+    this.areaFormacionColor,
     this.guia,
     this.proyecto,
     this.notas,
@@ -492,11 +497,18 @@ class _StickyActionsState extends ConsumerState<_StickyActions> {
 
   Future<void> _handleCalendario() async {
     if (_loading) return;
+
+    final selectedColor = await showColorPickerDialog(
+      context,
+      defaultColor: widget.data.areaFormacionColor,
+    );
+    if (!mounted || selectedColor == null) return;
+
     setState(() => _loading = true);
 
     final result = await ref
         .read(addToCalendarioProvider)
-        .call(widget.data.id);
+        .call(widget.data.id, selectedColor);
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -509,6 +521,30 @@ class _StickyActionsState extends ConsumerState<_StickyActions> {
         ref.invalidate(isInCalendarioProvider(widget.data.id));
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Examen agregado al calendario')),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleRemoveCalendario() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+
+    final result = await ref
+        .read(removeFromCalendarioProvider)
+        .call(widget.data.id);
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    result.fold(
+      (_) => ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo eliminar. Intenta de nuevo')),
+      ),
+      (_) {
+        ref.invalidate(isInCalendarioProvider(widget.data.id));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Examen eliminado del calendario')),
         );
       },
     );
@@ -540,17 +576,26 @@ class _StickyActionsState extends ConsumerState<_StickyActions> {
             child: isSaved
                 ? OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: barColor,
-                      side: BorderSide(color: barColor),
+                      foregroundColor: const Color(0xFFC62828),
+                      side: const BorderSide(color: Color(0xFFC62828)),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: null,
-                    icon: const Icon(Icons.check, size: 18),
+                    onPressed: _loading ? null : _handleRemoveCalendario,
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFC62828),
+                            ),
+                          )
+                        : const Icon(Icons.calendar_month, size: 18),
                     label: const Text(
-                      'Guardado',
+                      'Eliminar del calendario',
                       style: TextStyle(fontSize: 13),
                     ),
                   )
@@ -580,22 +625,6 @@ class _StickyActionsState extends ConsumerState<_StickyActions> {
                   ),
           ),
           const SizedBox(width: 12),
-          // Secundario: recordatorio
-          Expanded(
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: barColor,
-                side: BorderSide(color: barColor),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () {},
-              icon: const Icon(Icons.notification_add, size: 18),
-              label: const Text('Recordatorio', style: TextStyle(fontSize: 13)),
-            ),
-          ),
         ],
       ),
     );

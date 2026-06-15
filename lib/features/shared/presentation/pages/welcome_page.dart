@@ -97,11 +97,12 @@ class WelcomePage extends ConsumerWidget {
                             }
                           },
                         ),
-                        AppSecondaryButton(
-                          label: 'Soy personal de Gestión',
-                          width: buttonWidth,
-                          onPressed: () =>
-                              print('Soy personal de Gestión pressed'),
+                        AppSecondaryButton( // O el nombre del widget que estés usando
+                            label: 'Soy personal de Gestión',
+                            width: buttonWidth,
+                            onPressed: () {
+                              context.push('/admin/login');
+                            },
                         ),
                       ],
                     ),

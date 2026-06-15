@@ -1,11 +1,11 @@
 // ============================================================
 // NOMBRE: app_search_bar.dart
-// USO: Barra de búsqueda con botones de búsqueda y filtro
-//      animados. Consumida por DashboardMaterias,
-//      ExploreMateriasCarrera, ExploreSemestres y
-//      ExploreMateriasSelection.
+// USO: Barra de búsqueda con botón de filtro animado.
+//      Consumida por DashboardMaterias, ExploreMateriasCarrera,
+//      ExploreSemestres y ExploreMateriasSelection.
 // ============================================================
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 
 class AppSearchBar extends StatefulWidget {
@@ -14,6 +14,8 @@ class AppSearchBar extends StatefulWidget {
   final String hint;
   final VoidCallback? onSearchTap;
   final VoidCallback? onFilterTap;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextInputType? keyboardType;
 
   const AppSearchBar({
     super.key,
@@ -22,6 +24,8 @@ class AppSearchBar extends StatefulWidget {
     this.hint = 'Buscar materia...',
     this.onSearchTap,
     this.onFilterTap,
+    this.inputFormatters,
+    this.keyboardType,
   });
 
   @override
@@ -29,19 +33,22 @@ class AppSearchBar extends StatefulWidget {
 }
 
 class _AppSearchBarState extends State<AppSearchBar>
-    with TickerProviderStateMixin {
-  late final AnimationController _searchCtrl;
+    with SingleTickerProviderStateMixin {
   late final AnimationController _filterCtrl;
-  late final Animation<double> _searchScale;
   late final Animation<double> _filterScale;
+  bool _hasText = false;
 
   @override
   void initState() {
     super.initState();
-    _searchCtrl = _makeCtrl();
     _filterCtrl = _makeCtrl();
-    _searchScale = _makeScale(_searchCtrl);
     _filterScale = _makeScale(_filterCtrl);
+    widget.controller?.addListener(_onTextChanged);
+  }
+
+  void _onTextChanged() {
+    final hasText = (widget.controller?.text.isNotEmpty) ?? false;
+    if (hasText != _hasText) setState(() => _hasText = hasText);
   }
 
   AnimationController _makeCtrl() => AnimationController(
@@ -56,7 +63,7 @@ class _AppSearchBarState extends State<AppSearchBar>
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    widget.controller?.removeListener(_onTextChanged);
     _filterCtrl.dispose();
     super.dispose();
   }
@@ -69,6 +76,8 @@ class _AppSearchBarState extends State<AppSearchBar>
           child: TextField(
             controller: widget.controller,
             onChanged: widget.onChanged,
+            inputFormatters: widget.inputFormatters,
+            keyboardType: widget.keyboardType,
             decoration: InputDecoration(
               hintText: widget.hint,
               hintStyle: const TextStyle(
@@ -76,6 +85,16 @@ class _AppSearchBarState extends State<AppSearchBar>
                 fontSize: 14,
               ),
               prefixIcon: const Icon(Icons.search, color: AppColors.textHint),
+              suffixIcon: _hasText
+                  ? IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      color: AppColors.textHint,
+                      onPressed: () {
+                        widget.controller?.clear();
+                        widget.onChanged?.call('');
+                      },
+                    )
+                  : null,
               filled: true,
               fillColor: AppColors.searchBarBackground,
               border: OutlineInputBorder(
@@ -93,20 +112,15 @@ class _AppSearchBarState extends State<AppSearchBar>
             ),
           ),
         ),
-        const SizedBox(width: 10),
-        _PressButton(
-          controller: _searchCtrl,
-          scale: _searchScale,
-          icon: Icons.search,
-          onTap: widget.onSearchTap,
-        ),
-        const SizedBox(width: 8),
-        _PressButton(
-          controller: _filterCtrl,
-          scale: _filterScale,
-          icon: Icons.tune,
-          onTap: widget.onFilterTap,
-        ),
+        if (widget.onFilterTap != null) ...[
+          const SizedBox(width: 10),
+          _PressButton(
+            controller: _filterCtrl,
+            scale: _filterScale,
+            icon: Icons.tune,
+            onTap: widget.onFilterTap,
+          ),
+        ],
       ],
     );
   }

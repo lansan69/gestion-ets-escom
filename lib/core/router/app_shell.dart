@@ -29,6 +29,12 @@ class AppShell extends StatelessWidget {
       label: 'Calendario',
     ),
     (
+      path: '/salones',
+      icon: Icons.meeting_room_outlined,
+      activeIcon: Icons.meeting_room,
+      label: 'Salones',
+    ),
+    (
       path: '/config',
       icon: Icons.settings_outlined,
       activeIcon: Icons.settings,
@@ -47,6 +53,7 @@ class AppShell extends StatelessWidget {
     if (location.startsWith('/inicio')) return 'Mis Materias';
     if (location.startsWith('/explorar')) return 'Explorar';
     if (location.startsWith('/calendario')) return 'Calendario';
+    if (location.startsWith('/salones')) return 'Salones';
     if (location.startsWith('/config')) return 'Configuración';
     if (location.startsWith('/materia') && extra is MateriaData) {
       return extra.nombre;
@@ -63,11 +70,7 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true,
         title: Text(_title(location, state.extra)),
         foregroundColor: Colors.white,
         backgroundColor: Colors.transparent,
@@ -80,7 +83,7 @@ class AppShell extends StatelessWidget {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
-        onTap: (i) => context.push(_tabs[i].path),
+        onTap: (i) => context.go(_tabs[i].path),
         selectedItemColor: AppColors.navBarActiveItem,
         unselectedItemColor: AppColors.navBarInactiveItem,
         backgroundColor: AppColors.navBarBackground,

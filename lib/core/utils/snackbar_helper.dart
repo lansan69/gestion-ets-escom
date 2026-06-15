@@ -1,19 +1,24 @@
-// ============================================================
-// NOMBRE: snackbar_helper.dart
-// USO: Utilidad para mostrar snackbars de éxito y error de forma
-//      centralizada. Consumido por cualquier pantalla que necesite
-//      dar retroalimentación visual al usuario.
-// ============================================================
 import 'package:flutter/material.dart';
 
 class SnackbarHelper {
-  // Muestra un snackbar de error con el mensaje indicado.
   static void showError(BuildContext context, String message) {
-    throw UnimplementedError();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFFC62828),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
-  // Muestra un snackbar de éxito con el mensaje indicado.
   static void showSuccess(BuildContext context, String message) {
-    throw UnimplementedError();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFF2E7D32),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 1),
+      ),
+    );
   }
 }

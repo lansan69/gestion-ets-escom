@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gestion_ets_escom/features/shared/data/datasources/local/database_helper.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_text_styles.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
@@ -33,7 +34,15 @@ class _SplashPageState extends ConsumerState<SplashPage>
   Future<void> _navigate() async {
     await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
-    context.go('/bienvenida');
+
+    final db = await DatabaseHelper().database;
+    final rows = await db.rawQuery(
+      'SELECT COUNT(*) AS cnt FROM preferencia',
+    );
+    if (!mounted) return;
+
+    final count = rows.first['cnt'] as int;
+    context.go(count > 0 ? '/inicio' : '/bienvenida');
   }
 
   @override

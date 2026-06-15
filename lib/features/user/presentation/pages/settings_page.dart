@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/providers/core_providers.dart';
 import 'package:gestion_ets_escom/core/utils/snackbar_helper.dart';
+import 'package:gestion_ets_escom/features/shared/presentation/pages/welcome_page.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
@@ -135,14 +136,29 @@ class SettingsPage extends ConsumerWidget {
                               onTap: () => _confirmClearCache(context, ref),
                             ),
                             _Divider(),
+                          ],
+                        ),
+                        _SettingsSection(
+                          title: 'CONTROLES',
+                          children: [
                             _SettingsTile(
                               icon: Icons.logout_rounded,
-                              iconColor: const Color(0xFF0D47A1),
-                              iconBgColor: const Color(0xFFE3EAFD),
+                              iconColor: const Color(0xFFD32F2F),
+                              iconBgColor: const Color(0xFFFFEBEE),
                               title: 'Salir de la app',
                               subtitle: 'Cierra la aplicación por completo',
                               showTrailingIcon: false,
                               onTap: () => _confirmExit(context),
+                            ),
+                            _Divider(),
+                            _SettingsTile(
+                              icon: Icons.arrow_back,
+                              iconColor: const Color(0xFF0D47A1),
+                              iconBgColor: const Color(0xFFE3EAFD),
+                              title: 'Regresar al inicio',
+                              subtitle: 'Volver a la pantalla de inicio',
+                              showTrailingIcon: false,
+                              onTap: () => context.go('/bienvenida'),
                             ),
                           ],
                         ),

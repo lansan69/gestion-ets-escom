@@ -13,9 +13,8 @@ import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // ---> ESTA ES LA LÍNEA QUE TE FALTÓ <---
-  await initializeDateFormatting('es_ES', null); 
+
+  await initializeDateFormatting('es_ES', null);
 
   await dotenv.load();
   await Supabase.initialize(

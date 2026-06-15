@@ -8,7 +8,6 @@
 // ============================================================
 import 'package:flutter/material.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/pages/splash_page.dart';
-import 'package:gestion_ets_escom/features/user/presentation/pages/calendario.dart';
 import 'package:gestion_ets_escom/features/user/presentation/pages/explore_exams.dart';
 import 'package:gestion_ets_escom/features/user/presentation/pages/salones_page.dart';
 import 'package:go_router/go_router.dart';
@@ -37,7 +36,6 @@ final GoRouter appRouter = GoRouter(
       builder: (_, _) => const AdminLoginPage(),
     ),
     // --- NUEVO BLOQUE DEL ADMINISTRADOR ---
-    // --- NUEVO BLOQUE DEL ADMINISTRADOR ---
     ShellRoute(
       builder: (_, _, child) => AdminShell(child: child),
       routes: [
@@ -65,6 +63,20 @@ final GoRouter appRouter = GoRouter(
       path: '/onboarding/semestre',
       builder: (_, state) =>
           OnBoardingSemestre(carreraId: state.extra as String?),
+    ),
+    GoRoute(
+      path: '/settings/preferencias/carrera',
+      builder: (_, _) => const OnBoardingCarrera(isEditing: true),
+    ),
+    GoRoute(
+      path: '/settings/preferencias/semestre',
+      builder: (_, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        return OnBoardingSemestre(
+          carreraId: extra['carreraId'] as String?,
+          isEditing: true,
+        );
+      },
     ),
     GoRoute(
       path: '/materia',

@@ -71,7 +71,19 @@ class AppShell extends StatelessWidget {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: true,
-        title: Text(_title(location, state.extra)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _title(location, state.extra),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+            ),
+            Text(
+              'ETS ESCOM · Sem. 2026-1',
+              style: TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ],
+        ),
         foregroundColor: Colors.white,
         backgroundColor: Colors.transparent,
         elevation: 0,

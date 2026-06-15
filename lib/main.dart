@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/router/router.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,9 @@ Future<void> main() async {
     publishableKey: dotenv.env['SUPABASE_PUBLISHABLE_KEY']!,
   );
 
-  runApp(const ProviderScope(child: MyApp()));
+  initializeDateFormatting().then(
+    (_) => runApp(const ProviderScope(child: MyApp())),
+  );
 }
 
 class MyApp extends StatelessWidget {

@@ -4,7 +4,9 @@
 //      Define las operaciones de consulta a Supabase para
 //      catálogos y exámenes. Implementado por SharedRemoteDatasourceImpl.
 // ============================================================
+import 'package:gestion_ets_escom/features/shared/data/models/area_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/carrera_model.dart';
+import 'package:gestion_ets_escom/features/shared/data/models/edificio_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/examen_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/materia_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/profesor_model.dart';
@@ -15,6 +17,8 @@ abstract class SharedRemoteDatasource {
   Future<List<MateriaModel>> getMaterias(String carreraId);
   Future<List<SalonModel>> getSalones();
   Future<List<ProfesorModel>> getProfesores();
+  Future<List<AreaFormacionModel>> getAreasFormacion();
+  Future<List<EdificioModel>> getEdificios();
 
   // Exámenes
   Future<List<ExamenModel>> getExamenes();

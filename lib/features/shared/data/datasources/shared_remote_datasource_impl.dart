@@ -5,7 +5,9 @@
 // ============================================================
 
 import 'package:gestion_ets_escom/features/shared/data/datasources/shared_remote_datasource.dart';
+import 'package:gestion_ets_escom/features/shared/data/models/area_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/carrera_model.dart';
+import 'package:gestion_ets_escom/features/shared/data/models/edificio_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/examen_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/materia_model.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/profesor_model.dart';
@@ -53,10 +55,13 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
     return response.map((json) => MateriaModel.fromJson(json)).toList();
   }
 
-  // Obtiene todos los salones disponibles.
+  // Obtiene todos los salones activos (excluye soft-deleted).
   @override
   Future<List<SalonModel>> getSalones() async {
-    final response = await supabaseClient.from('salon').select();
+    final response = await supabaseClient
+        .from('salon')
+        .select()
+        .eq('activo', true);
     return response.map((json) => SalonModel.fromJson(json)).toList();
   }
 
@@ -113,5 +118,25 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
         .eq('id', id)
         .single();
     return ExamenModel.fromJson(response);
+  }
+
+  // Obtiene todas las áreas de formación activas.
+  @override
+  Future<List<AreaFormacionModel>> getAreasFormacion() async {
+    final response = await supabaseClient
+        .from('area_formacion')
+        .select()
+        .eq('activo', true);
+    return response.map((json) => AreaFormacionModel.fromJson(json)).toList();
+  }
+
+  @override
+  Future<List<EdificioModel>> getEdificios() async {
+    final response = await supabaseClient
+        .from('edificio')
+        .select()
+        .eq('activo', true)
+        .order('numero');
+    return response.map((json) => EdificioModel.fromJson(json)).toList();
   }
 }

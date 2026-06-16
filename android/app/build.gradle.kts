@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.gestion_ets"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

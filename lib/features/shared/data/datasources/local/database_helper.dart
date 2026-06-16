@@ -13,7 +13,8 @@ import 'package:sqflite/sqflite.dart';
 // v2 → v3: added color column to calendario
 // v3 → v4: consolidated preferencia from one-row-per-semestre to
 //           one-row-per-carrera with seleccion1/2/3_semestre columns
-const int _kDbVersion = 4;
+// v4 → v5: added notification_prefs table
+const int _kDbVersion = 5;
 
 const String _kPreferenciaSchema = '''
   CREATE TABLE preferencia (
@@ -74,6 +75,17 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await _migratePreferencia(db);
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notification_prefs (
+          id          INTEGER PRIMARY KEY DEFAULT 1,
+          enabled     INTEGER NOT NULL DEFAULT 1,
+          days_before INTEGER NOT NULL DEFAULT 1,
+          hour        INTEGER NOT NULL DEFAULT 8,
+          minute      INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
     }
   }
 
@@ -217,6 +229,16 @@ class DatabaseHelper {
       CREATE TABLE calendario (
         examen_id TEXT PRIMARY KEY,
         color TEXT NOT NULL DEFAULT '#1A3A8F'
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE notification_prefs (
+        id          INTEGER PRIMARY KEY DEFAULT 1,
+        enabled     INTEGER NOT NULL DEFAULT 1,
+        days_before INTEGER NOT NULL DEFAULT 1,
+        hour        INTEGER NOT NULL DEFAULT 8,
+        minute      INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }

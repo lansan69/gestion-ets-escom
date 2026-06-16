@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/providers/core_providers.dart';
+import 'package:gestion_ets_escom/core/services/notification_service.dart';
 import 'package:gestion_ets_escom/core/utils/snackbar_helper.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/pages/welcome_page.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
+import 'package:gestion_ets_escom/features/user/presentation/providers/notification_prefs_provider.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/preferencias_provider.dart';
 import 'package:go_router/go_router.dart';
 
@@ -118,6 +121,14 @@ class SettingsPage extends ConsumerWidget {
                                   'isEditing': true,
                                 },
                               ),
+                            ),
+                          ],
+                        ),
+                        _SettingsSection(
+                          title: 'NOTIFICACIONES',
+                          children: [
+                            _NotificacionesTile(
+                              onTap: () => _showNotificacionesSheet(context, ref),
                             ),
                           ],
                         ),
@@ -497,6 +508,270 @@ class _Divider extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 60, right: 16),
       child: Divider(height: 1, color: Colors.grey.shade200),
+    );
+  }
+}
+
+// ─── Notificaciones ────────────────────────────────────────────────────────────
+
+Future<void> _showNotificacionesSheet(
+    BuildContext context, WidgetRef ref) async {
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => const _NotificacionesSheet(),
+  );
+}
+
+class _NotificacionesTile extends ConsumerWidget {
+  final VoidCallback onTap;
+  const _NotificacionesTile({required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefsAsync = ref.watch(notificationPrefsProvider);
+    final enabled = prefsAsync.asData?.value.enabled ?? true;
+    final subtitle = enabled ? 'Activadas' : 'Desactivadas';
+
+    return _SettingsTile(
+      icon: Icons.notifications_outlined,
+      iconColor: const Color(0xFF6B3FA0),
+      iconBgColor: const Color(0xFFF3EDFB),
+      title: 'Notificaciones',
+      subtitle: subtitle,
+      onTap: onTap,
+    );
+  }
+}
+
+class _NotificacionesSheet extends ConsumerStatefulWidget {
+  const _NotificacionesSheet();
+
+  @override
+  ConsumerState<_NotificacionesSheet> createState() =>
+      _NotificacionesSheetState();
+}
+
+class _NotificacionesSheetState extends ConsumerState<_NotificacionesSheet> {
+  late bool _enabled;
+  late int _daysBefore;
+  late TimeOfDay _time;
+  bool _saving = false;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final prefs =
+          ref.read(notificationPrefsProvider).asData?.value ??
+          const NotificationPrefs();
+      setState(() {
+        _enabled = prefs.enabled;
+        _daysBefore = prefs.daysBefore;
+        _time = TimeOfDay(hour: prefs.hour, minute: prefs.minute);
+        _ready = true;
+      });
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+
+    if (_enabled) {
+      await NotificationService.instance.requestPermission();
+    }
+
+    final prefs = NotificationPrefs(
+      enabled: _enabled,
+      daysBefore: _daysBefore,
+      hour: _time.hour,
+      minute: _time.minute,
+    );
+
+    await ref.read(notificationPrefsProvider.notifier).save(prefs);
+
+    if (_enabled) {
+      final result = await ref.read(getCalendarioExamenesProvider).call();
+      final examenes = result.fold(
+        (_) => <CalendarioExamen>[],
+        (list) => list,
+      );
+      await NotificationService.instance.scheduleAll(examenes, prefs);
+    } else {
+      await NotificationService.instance.cancelAll();
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
+      SnackbarHelper.showSuccess(context, 'Preferencias de notificación guardadas');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return const Padding(
+        padding: EdgeInsets.all(40),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom + 32;
+    final daysOptions = [
+      (label: 'Mismo día', value: 0),
+      (label: '1 día antes', value: 1),
+      (label: '2 días antes', value: 2),
+      (label: '1 semana', value: 7),
+    ];
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, bottomPadding),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Center(
+            child: Icon(Icons.notifications_outlined,
+                size: 36, color: Color(0xFF6B3FA0)),
+          ),
+          const SizedBox(height: 12),
+          const Center(
+            child: Text(
+              'Notificaciones de ETS',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Activar recordatorios',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+              Switch(
+                value: _enabled,
+                activeThumbColor: const Color(0xFF6B3FA0),
+                activeTrackColor: const Color(0xFFD4BFEE),
+                onChanged: (v) => setState(() => _enabled = v),
+              ),
+            ],
+          ),
+          if (_enabled) ...[
+            const SizedBox(height: 20),
+            Text(
+              'ANTICIPACIÓN',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade400),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final opt in daysOptions)
+                  ChoiceChip(
+                    label: Text(opt.label),
+                    selected: _daysBefore == opt.value,
+                    selectedColor: const Color(0xFFF3EDFB),
+                    onSelected: (_) =>
+                        setState(() => _daysBefore = opt.value),
+                    side: BorderSide(
+                      color: _daysBefore == opt.value
+                          ? const Color(0xFF6B3FA0)
+                          : Colors.grey.shade300,
+                    ),
+                    labelStyle: TextStyle(
+                      color: _daysBefore == opt.value
+                          ? const Color(0xFF6B3FA0)
+                          : Colors.black87,
+                      fontWeight: _daysBefore == opt.value
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'HORA DEL AVISO',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade400),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () async {
+                final picked = await showTimePicker(
+                  context: context,
+                  initialTime: _time,
+                );
+                if (picked != null) setState(() => _time = picked);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.access_time,
+                        color: Color(0xFF6B3FA0), size: 20),
+                    const SizedBox(width: 12),
+                    Text(
+                      _time.format(context),
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w500),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF6B3FA0),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('Guardar'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

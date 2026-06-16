@@ -12,8 +12,10 @@ import 'package:gestion_ets_escom/core/errors/failures.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/shared_local_datasource.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/shared_remote_datasource.dart';
 import 'package:gestion_ets_escom/features/shared/data/models/preferencia_model.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/area_formacion.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/edificio.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
@@ -245,6 +247,30 @@ class SharedRepositoryImpl implements SharedRepository {
       return Right(result);
     } catch (_) {
       return Left(const ServerFailure('No se pudieron cargar las estadísticas'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<AreaFormacion>>> getAreasFormacion() async {
+    try {
+      final models = await datasource.getAreasFormacion();
+      return Right(models.map((m) => m.toEntity()).toList());
+    } on PostgrestException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(const ServerFailure('Error al cargar áreas de formación'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Edificio>>> getEdificios() async {
+    try {
+      final models = await datasource.getEdificios();
+      return Right(models.map((m) => m.toEntity()).toList());
+    } on PostgrestException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(const ServerFailure('Error al cargar edificios'));
     }
   }
 }

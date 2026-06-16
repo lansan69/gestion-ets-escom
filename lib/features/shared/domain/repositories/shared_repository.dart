@@ -6,8 +6,10 @@
 // ============================================================
 import 'package:dartz/dartz.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/area_formacion.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/edificio.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
@@ -23,6 +25,8 @@ abstract class SharedRepository {
   Future<Either<Failure, List<Materia>>> getMaterias(String carreraId);
   Future<Either<Failure, List<Salon>>> getSalones();
   Future<Either<Failure, List<Profesor>>> getProfesores();
+  Future<Either<Failure, List<AreaFormacion>>> getAreasFormacion();
+  Future<Either<Failure, List<Edificio>>> getEdificios();
 
   // Exámenes
   Stream<Either<Failure, List<Examen>>> getExamenes([ExamenFilter? filter]);

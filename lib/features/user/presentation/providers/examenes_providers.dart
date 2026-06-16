@@ -22,7 +22,8 @@ final getExamenesProvider = Provider<GetExamenes>(
 
 // Carga offline-first de todos los exámenes sin pre-filtro de onboarding.
 // El filtrado fino se realiza en memoria dentro de examenesProvider.
-final _allExamenesProvider = StreamProvider<List<Examen>>((ref) {
+// Público para que admin pueda invalidarlo tras mutaciones.
+final allExamenesProvider = StreamProvider<List<Examen>>((ref) {
   return ref
       .read(getExamenesProvider)(const ExamenFilter())
       .map(
@@ -34,11 +35,11 @@ final _allExamenesProvider = StreamProvider<List<Examen>>((ref) {
 });
 
 // Extrae las áreas de formación únicas de los exámenes ya cargados.
-// No realiza consultas adicionales: se deriva de _allExamenesProvider.
-// Se recalcula automáticamente cuando _allExamenesProvider emite nuevos datos.
+// No realiza consultas adicionales: se deriva de allExamenesProvider.
+// Se recalcula automáticamente cuando allExamenesProvider emite nuevos datos.
 // Consumido por ExploreExams para alimentar los chips de área en FilterCard.
 final areasFormacionProvider = Provider<AsyncValue<List<AreaFormacion>>>((ref) {
-  final examsAsync = ref.watch(_allExamenesProvider);
+  final examsAsync = ref.watch(allExamenesProvider);
   return examsAsync.whenData((exams) {
     final seen = <String>{};
     final areas = <AreaFormacion>[];
@@ -54,7 +55,7 @@ final areasFormacionProvider = Provider<AsyncValue<List<AreaFormacion>>>((ref) {
 // Se recalcula automáticamente cuando cambia cualquier provider de filtro.
 // Devuelve AsyncValue para que el consumidor pueda manejar loading/error/data.
 final examenesProvider = Provider<AsyncValue<List<Examen>>>((ref) {
-  final allAsync = ref.watch(_allExamenesProvider);
+  final allAsync = ref.watch(allExamenesProvider);
   final carrera = ref.watch(filterCarreraProvider);
   final semestres = ref.watch(filterSemestresProvider);
   final area = ref.watch(filterAreaProvider);

@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 
@@ -199,9 +201,10 @@ class AdminProfilePage extends StatelessWidget {
                                     Icons.arrow_forward_ios_rounded,
                                     size: 16,
                                     color: Colors.grey),
-                                onTap: () {
-                                  // TODO: Abrir url de términos
-                                },
+                                onTap: () => showDialog(
+                                  context: context,
+                                  builder: (_) => const _TermsModal(),
+                                ),
                               ),
                             ],
                           ),
@@ -411,8 +414,22 @@ class _ChangePasswordModalState extends State<_ChangePasswordModal> {
 // =======================================================================
 // MODAL: CONFIRMAR CERRAR SESIÓN
 // =======================================================================
-class _LogoutModal extends StatelessWidget {
+class _LogoutModal extends StatefulWidget {
   const _LogoutModal();
+
+  @override
+  State<_LogoutModal> createState() => _LogoutModalState();
+}
+
+class _LogoutModalState extends State<_LogoutModal> {
+  bool _loading = false;
+
+  Future<void> _signOut() async {
+    setState(() => _loading = true);
+    await Supabase.instance.client.auth.signOut();
+    if (!mounted) return;
+    context.go('/admin/login');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -458,7 +475,7 @@ class _LogoutModal extends StatelessWidget {
                               color: Colors.grey[300]!, width: 1.5),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16))),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _loading ? null : () => Navigator.pop(context),
                       child: Text('Cancelar',
                           style: TextStyle(
                               fontSize: 15,
@@ -475,13 +492,16 @@ class _LogoutModal extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16)),
                           elevation: 0),
-                      onPressed: () {
-                        // TODO: Lógica de limpieza de token y ruteo al Login
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Salir',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.bold)),
+                      onPressed: _loading ? null : _signOut,
+                      child: _loading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Salir',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -490,6 +510,103 @@ class _LogoutModal extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// =======================================================================
+// MODAL: TÉRMINOS Y PRIVACIDAD
+// =======================================================================
+class _TermsModal extends StatelessWidget {
+  const _TermsModal();
+
+  @override
+  Widget build(BuildContext context) {
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+        child: Container(
+          decoration: BoxDecoration(
+              color: Colors.white, borderRadius: BorderRadius.circular(28)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 20, 12, 20),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50]?.withValues(alpha: 0.4),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border(bottom: BorderSide(color: Colors.blue[100]!)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.description_outlined,
+                        color: AppColors.primaryDarkBlue),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text('Términos y Privacidad',
+                          style: TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w800)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              // Body
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _section('1. Uso del sistema',
+                          'Esta aplicación es de uso exclusivo del personal administrativo autorizado de ESCOM. El acceso no autorizado está prohibido.'),
+                      _section('2. Datos personales',
+                          'Los datos de exámenes, salones y materias se almacenan de forma segura en servidores institucionales. No se comparten con terceros.'),
+                      _section('3. Credenciales',
+                          'El administrador es responsable de mantener su contraseña confidencial. Se recomienda cambiarla periódicamente.'),
+                      _section('4. Disponibilidad',
+                          'El sistema puede presentar mantenimientos programados. ESCOM no garantiza disponibilidad ininterrumpida.'),
+                      _section('5. Modificaciones',
+                          'Estos términos pueden actualizarse. Los cambios se notificarán a través de los canales institucionales.'),
+                      const SizedBox(height: 8),
+                      Text('Versión 1.0 · Junio 2025',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                              fontStyle: FontStyle.italic)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _section(String title, String body) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryDarkBlue)),
+        const SizedBox(height: 4),
+        Text(body,
+            style: TextStyle(
+                fontSize: 13, color: Colors.grey[700], height: 1.5)),
+      ]),
     );
   }
 }

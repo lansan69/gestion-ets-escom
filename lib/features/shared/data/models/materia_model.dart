@@ -31,6 +31,16 @@ class MateriaModel extends Materia {
             : null,
       );
 
+  // Serializa para INSERT/UPDATE en Supabase usando IDs de FK (no objetos anidados).
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'nombre': nombre,
+    'carrera_id': carrera.id,
+    'semestre': semestre,
+    'activo': activo,
+    'area_formacion_id': areaFormacion?.id,
+  };
+
   // Convierte el modelo a la entidad de dominio Materia.
   Materia toEntity() => Materia(
         id: id,

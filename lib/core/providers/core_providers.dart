@@ -26,6 +26,17 @@ import 'package:gestion_ets_escom/features/shared/domain/usecases/preferencia/ha
 import 'package:gestion_ets_escom/features/shared/domain/usecases/preferencia/save_preferencia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/preferencia.dart';
 
+
+// Imports del Administrador
+import 'package:gestion_ets_escom/features/admin/data/datasources/admin_remote_datasource.dart';
+import 'package:gestion_ets_escom/features/admin/data/datasources/admin_remote_datasource_impl.dart';
+import 'package:gestion_ets_escom/features/admin/data/datasources/auth_remote_datasource.dart';
+import 'package:gestion_ets_escom/features/admin/data/datasources/auth_remote_datasource_impl.dart';
+import 'package:gestion_ets_escom/features/admin/data/repositories/admin_repository_impl.dart';
+import 'package:gestion_ets_escom/features/admin/domain/repositories/admin_repository.dart';
+import 'package:gestion_ets_escom/features/admin/data/repositories/auth_repository_impl.dart';
+import 'package:gestion_ets_escom/features/admin/domain/repositories/auth_repository.dart';
+
 // Expone la instancia global del cliente de Supabase ya inicializado.
 // Consumido por sharedDatasourceProvider y cualquier datasource que acceda a Supabase.
 final supabaseClientProvider = Provider<SupabaseClient>(
@@ -110,4 +121,19 @@ final removeFromCalendarioProvider = Provider<RemoveFromCalendario>(
 // ── Cache ─────────────────────────────────
 final clearCacheProvider = Provider<ClearCache>(
   (ref) => ClearCache(ref.read(sharedRepositoryProvider)),
+);
+
+// ============================================================
+// ── Admin Datasources & Repositories ──────────────────────
+// ============================================================
+
+// CRUD de Catálogos y Exámenes del Administrador
+final adminRemoteDatasourceProvider = Provider<AdminRemoteDatasource>(
+  (ref) => AdminRemoteDatasourceImpl(), 
+);
+
+final adminRepositoryProvider = Provider<AdminRepository>(
+  (ref) => AdminRepositoryImpl(
+    remoteDatasource: ref.read(adminRemoteDatasourceProvider),
+  ),
 );

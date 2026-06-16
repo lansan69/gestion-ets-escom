@@ -21,7 +21,7 @@ import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/ba
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/card_materia.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/card_materia_expanded.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/filter_card.dart';
-import 'package:gestion_ets_escom/features/user/presentation/pages/individual_materia_view.dart';
+import 'package:gestion_ets_escom/features/shared/presentation/pages/individual_materia_view.dart';
 
 EtsStatus _statusForDate(DateTime fecha) {
   final today = DateTime.now();

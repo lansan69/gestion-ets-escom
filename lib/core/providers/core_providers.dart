@@ -25,6 +25,8 @@ import 'package:gestion_ets_escom/features/shared/domain/usecases/preferencia/ge
 import 'package:gestion_ets_escom/features/shared/domain/usecases/preferencia/has_preferencia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/usecases/preferencia/save_preferencia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/preferencia.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/stats_result.dart';
+import 'package:gestion_ets_escom/features/shared/domain/usecases/stats/get_stats.dart';
 
 // Expone la instancia global del cliente de Supabase ya inicializado.
 // Consumido por sharedDatasourceProvider y cualquier datasource que acceda a Supabase.
@@ -111,3 +113,16 @@ final removeFromCalendarioProvider = Provider<RemoveFromCalendario>(
 final clearCacheProvider = Provider<ClearCache>(
   (ref) => ClearCache(ref.read(sharedRepositoryProvider)),
 );
+
+// ── Estadísticas ──────────────────────────
+final getStatsProvider = Provider<GetStats>(
+  (ref) => GetStats(ref.read(sharedRepositoryProvider)),
+);
+
+final statsProvider = FutureProvider<StatsResult>((ref) async {
+  final result = await ref.read(getStatsProvider).call();
+  return result.fold(
+    (_) => throw Exception('Error al cargar estadísticas'),
+    (stats) => stats,
+  );
+});

@@ -20,6 +20,7 @@ import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/preferencia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/profesor.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/salon.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/stats_result.dart';
 import 'package:gestion_ets_escom/features/shared/domain/repositories/shared_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -234,6 +235,16 @@ class SharedRepositoryImpl implements SharedRepository {
       return const Right(null);
     } catch (_) {
       return Left(const CacheFailure('No se pudo limpiar el caché'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, StatsResult>> getStats() async {
+    try {
+      final result = await local.getStats();
+      return Right(result);
+    } catch (_) {
+      return Left(const ServerFailure('No se pudieron cargar las estadísticas'));
     }
   }
 }

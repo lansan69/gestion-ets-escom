@@ -12,6 +12,7 @@ import 'package:gestion_ets_escom/features/shared/data/models/preferencia_model.
 import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_entry.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/stats_result.dart';
 
 abstract class SharedLocalDatasource {
   Future<List<CarreraModel>> getCarreras();
@@ -41,4 +42,7 @@ abstract class SharedLocalDatasource {
 
   // Borra todas las filas de preferencia y calendario (reset de datos del usuario).
   Future<void> clearCache();
+
+  // Estadísticas de exámenes agrupadas por carrera y área desde SQLite.
+  Future<StatsResult> getStats();
 }

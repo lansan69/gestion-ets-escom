@@ -14,6 +14,7 @@ import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/preferencia.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/profesor.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/salon.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/stats_result.dart';
 
 abstract class SharedRepository {
   // Catálogos
@@ -48,4 +49,7 @@ abstract class SharedRepository {
 
   // Limpia preferencias y calendario del usuario.
   Future<Either<Failure, void>> clearCache();
+
+  // Estadísticas de exámenes agrupadas por carrera y área — solo caché local.
+  Future<Either<Failure, StatsResult>> getStats();
 }

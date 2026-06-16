@@ -5,7 +5,6 @@
 //      de DatabaseHelper. Consumido por SharedRepositoryImpl.
 // ============================================================
 
-import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/database_helper.dart';
 import 'package:gestion_ets_escom/features/shared/data/datasources/local/shared_local_datasource.dart';
@@ -16,6 +15,7 @@ import 'package:gestion_ets_escom/features/shared/data/models/preferencia_model.
 import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_entry.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/calendario_examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/stats_result.dart';
 
 class SharedLocalDatasourceImpl implements SharedLocalDatasource {
   final DatabaseHelper dbHelper;
@@ -376,5 +376,65 @@ class SharedLocalDatasourceImpl implements SharedLocalDatasource {
     batch.delete('preferencia');
     batch.delete('calendario');
     await batch.commit(noResult: true);
+  }
+
+  // Consulta únicamente SQLite. La FK de carrera y área está en materias, no en examenes,
+  // por lo que el JOIN pasa por materias → carreras / areas_formacion.
+  @override
+  Future<StatsResult> getStats() async {
+    final db = await dbHelper.database;
+
+    final carreraRows = await db.rawQuery('''
+      SELECT c.id, c.nombre, c.abreviatura, COUNT(e.id) AS total
+      FROM examenes e
+      INNER JOIN materias m           ON e.materia_id        = m.id
+      INNER JOIN carreras c           ON m.carrera_id        = c.id
+      GROUP BY c.id, c.nombre, c.abreviatura
+      ORDER BY total DESC
+    ''');
+
+    final areaRows = await db.rawQuery('''
+      SELECT a.id, a.nombre, a.color, COUNT(e.id) AS total
+      FROM examenes e
+      INNER JOIN materias      m ON e.materia_id        = m.id
+      INNER JOIN areas_formacion a ON m.area_formacion_id = a.id
+      GROUP BY a.id, a.nombre, a.color
+      ORDER BY total DESC
+    ''');
+
+    final totalExamenes = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM examenes'),
+        ) ??
+        0;
+    final totalCarreras = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM carreras'),
+        ) ??
+        0;
+    final totalAreas = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM areas_formacion'),
+        ) ??
+        0;
+
+    return StatsResult(
+      porCarrera: carreraRows
+          .map((r) => CarreraStats(
+                carreraId: r['id'] as String,
+                nombre: r['nombre'] as String,
+                abreviatura: r['abreviatura'] as String,
+                total: r['total'] as int,
+              ))
+          .toList(),
+      porArea: areaRows
+          .map((r) => AreaStats(
+                areaId: r['id'] as String,
+                nombre: r['nombre'] as String,
+                color: r['color'] as String,
+                total: r['total'] as int,
+              ))
+          .toList(),
+      totalExamenes: totalExamenes,
+      totalCarreras: totalCarreras,
+      totalAreas: totalAreas,
+    );
   }
 }

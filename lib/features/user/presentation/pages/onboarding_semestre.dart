@@ -74,7 +74,7 @@ class _OnBoardingSemestreState extends ConsumerState<OnBoardingSemestre> {
     if (cid != null && _selected.isNotEmpty) {
       final db = await DatabaseHelper().database;
       _selected.sort();
-      
+
       await db.insert('preferencia', {
         'carrera_id': cid,
         'omitir': 0,
@@ -88,10 +88,16 @@ class _OnBoardingSemestreState extends ConsumerState<OnBoardingSemestre> {
       ref.invalidate(preferenciasPageProvider);
       final semsNotifier = ref.read(filterSemestresProvider.notifier);
       semsNotifier.clear();
-      for (final s in _selected) { semsNotifier.add(s); }
+      for (final s in _selected) {
+        semsNotifier.add(s);
+      }
       SnackbarHelper.showSuccess(context, 'Preferencias actualizadas');
     }
-    context.go('/config');
+    if (widget.isEditing) {
+      context.go('/config');
+    } else {
+      context.go('/inicio');
+    }
   }
 
   @override

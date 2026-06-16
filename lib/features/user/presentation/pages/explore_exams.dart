@@ -89,9 +89,9 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
     if (!mounted || rows.isEmpty) return;
 
     final row = rows.first;
-    if (ref.read(filterCarreraProvider) == null) {
+    if (ref.read(filterCarreraProvider).isEmpty) {
       final cid = row['carrera_id'] as String? ?? '';
-      if (cid.isNotEmpty) ref.read(filterCarreraProvider.notifier).select(cid);
+      if (cid.isNotEmpty) ref.read(filterCarreraProvider.notifier).add(cid);
     }
     if (ref.read(filterSemestresProvider).isEmpty) {
       for (final key in [
@@ -131,14 +131,11 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
     final areas = ref.watch(areasFormacionProvider).value ?? [];
 
     // ─── Conversión provider → tipos que espera FilterCard ────────────────────
-    // Carrera y área usan UUID como valor; 'Todas'/'Todas' indica sin filtro.
-    final selectedCarreras = filterCarrera == null
-        ? {'Todas'}
-        : {filterCarrera};
+    final selectedCarreras = filterCarrera.isEmpty ? {'Todas'} : filterCarrera;
     final selectedSemestres = filterSemestres.isEmpty
         ? {'Todos'}
         : filterSemestres.map((s) => s.toString()).toSet();
-    final selectedArea = filterArea == null ? {'Todas'} : {filterArea};
+    final selectedArea = filterArea.isEmpty ? {'Todas'} : filterArea;
     final selectedTurno = filterTurno ?? 'Todos';
     final selectedSalon = filterSalon;
     return Container(
@@ -183,12 +180,12 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
                         selectedTurno: selectedTurno,
                         selectedFecha: filterFecha,
                         selectedSalon: selectedSalon,
-                        // Carrera: guarda el UUID del primer chip seleccionado; 'Todas' limpia.
                         onCarrerasChanged: (set) {
                           final n = ref.read(filterCarreraProvider.notifier);
-                          (set.contains('Todas') || set.isEmpty)
-                              ? n.clear()
-                              : n.select(set.first);
+                          n.clear();
+                          if (!set.contains('Todas')) {
+                            for (final id in set) { n.add(id); }
+                          }
                         },
                         // Semestres: reemplaza la lista completa con los valores del chip.
                         onSemestresChanged: (set) {
@@ -199,12 +196,12 @@ class _ExploreExamsState extends ConsumerState<ExploreExams> {
                             if (i != null) n.add(i);
                           }
                         },
-                        // Área: guarda el UUID del primer chip seleccionado; 'Todas' limpia.
                         onAreaChanged: (set) {
                           final n = ref.read(filterAreaProvider.notifier);
-                          (set.contains('Todas') || set.isEmpty)
-                              ? n.clear()
-                              : n.select(set.first);
+                          n.clear();
+                          if (!set.contains('Todas')) {
+                            for (final id in set) { n.add(id); }
+                          }
                         },
                         // Turno: 'Todos' limpia; cualquier otro valor lo selecciona.
                         onTurnoChanged: (v) {

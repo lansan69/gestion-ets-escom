@@ -66,13 +66,11 @@ final examenesProvider = Provider<AsyncValue<List<Examen>>>((ref) {
 
   return allAsync.whenData((all) {
     return all.where((e) {
-      // filterCarreraProvider almacena el UUID de la carrera seleccionada.
-      if (carrera != null && e.materia.carrera.id != carrera) return false;
+      if (carrera.isNotEmpty && !carrera.contains(e.materia.carrera.id)) return false;
       if (semestres.isNotEmpty && !semestres.contains(e.materia.semestre)) {
         return false;
       }
-      // filterAreaProvider almacena el UUID del área de formación seleccionada.
-      if (area != null && e.materia.areaFormacion?.id != area) return false;
+      if (area.isNotEmpty && !area.contains(e.materia.areaFormacion?.id)) return false;
       // El FilterCard envía 'Matutino'/'Vespertino'; el enum usa 'MATUTINO'/'VESPERTINO'.
       if (turno != null && e.turno.value != turno.toUpperCase()) return false;
       if (fecha != null) {

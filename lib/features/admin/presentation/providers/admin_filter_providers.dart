@@ -10,26 +10,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/providers/core_providers.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/area_formacion.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
-import 'package:gestion_ets_escom/features/shared/domain/entities/examen_filter.dart';
-import 'package:gestion_ets_escom/features/shared/domain/usecases/examen/get_examenes.dart';
 
-// ─── Base exam stream ─────────────────────────────────────────────────────────
+// ─── Base exam fetch ──────────────────────────────────────────────────────────
 
-final _adminGetExamenesProvider = Provider<GetExamenes>(
-  (ref) => GetExamenes(ref.read(sharedRepositoryProvider)),
-);
-
-// Carga offline-first de todos los exámenes para el panel admin.
+// Carga todos los exámenes desde Supabase directamente para el panel admin.
 // Separado del provider de usuario para que cada feature mantenga su ciclo de vida.
-final adminExamenesProvider = StreamProvider<List<Examen>>((ref) {
-  return ref
-      .read(_adminGetExamenesProvider)(const ExamenFilter())
-      .map(
-        (either) => either.fold(
-          (failure) => throw failure.message,
-          (examenes) => examenes,
-        ),
-      );
+// Se invalida con ref.invalidate(adminExamenesProvider) tras guardar cambios.
+final adminExamenesProvider = FutureProvider<List<Examen>>((ref) async {
+  final models = await ref.read(sharedDatasourceProvider).getExamenes();
+  return List<Examen>.from(models);
 });
 
 // Áreas de formación únicas extraídas del stream admin — alimenta FilterCard.
@@ -48,15 +37,16 @@ final adminAreasFormacionProvider = Provider<AsyncValue<List<AreaFormacion>>>((r
 
 // ─── Carrera ─────────────────────────────────────────────────────────────────
 
-class AdminFilterCarreraNotifier extends Notifier<String?> {
+class AdminFilterCarreraNotifier extends Notifier<Set<String>> {
   @override
-  String? build() => null;
-  void select(String id) => state = id;
-  void clear() => state = null;
+  Set<String> build() => {};
+  void add(String id) => state = {...state, id};
+  void remove(String id) => state = state.where((s) => s != id).toSet();
+  void clear() => state = {};
 }
 
 final adminFilterCarreraProvider =
-    NotifierProvider<AdminFilterCarreraNotifier, String?>(
+    NotifierProvider<AdminFilterCarreraNotifier, Set<String>>(
   AdminFilterCarreraNotifier.new,
 );
 
@@ -80,15 +70,16 @@ final adminFilterSemestresProvider =
 
 // ─── Área ─────────────────────────────────────────────────────────────────────
 
-class AdminFilterAreaNotifier extends Notifier<String?> {
+class AdminFilterAreaNotifier extends Notifier<Set<String>> {
   @override
-  String? build() => null;
-  void select(String id) => state = id;
-  void clear() => state = null;
+  Set<String> build() => {};
+  void add(String id) => state = {...state, id};
+  void remove(String id) => state = state.where((s) => s != id).toSet();
+  void clear() => state = {};
 }
 
 final adminFilterAreaProvider =
-    NotifierProvider<AdminFilterAreaNotifier, String?>(
+    NotifierProvider<AdminFilterAreaNotifier, Set<String>>(
   AdminFilterAreaNotifier.new,
 );
 
@@ -163,11 +154,11 @@ final adminExamenesFilteredProvider = Provider<AsyncValue<List<Examen>>>((ref) {
 
   return allAsync.whenData((all) {
     return all.where((e) {
-      if (carrera != null && e.materia.carrera.id != carrera) return false;
+      if (carrera.isNotEmpty && !carrera.contains(e.materia.carrera.id)) return false;
       if (semestres.isNotEmpty && !semestres.contains(e.materia.semestre)) {
         return false;
       }
-      if (area != null && e.materia.areaFormacion?.id != area) return false;
+      if (area.isNotEmpty && !area.contains(e.materia.areaFormacion?.id)) return false;
       if (turno != null && e.turno.value != turno.toUpperCase()) return false;
       if (fecha != null) {
         final examDay = DateTime(e.fecha.year, e.fecha.month, e.fecha.day);

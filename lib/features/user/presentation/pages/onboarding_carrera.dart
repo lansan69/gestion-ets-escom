@@ -75,7 +75,9 @@ class _OnBoardingCarreraState extends ConsumerState<OnBoardingCarrera> {
     );
     if (!mounted) return;
     ref.invalidate(preferenciasPageProvider);
-    ref.read(filterCarreraProvider.notifier).select(_selectedId!);
+    final carreraNotifier = ref.read(filterCarreraProvider.notifier);
+    carreraNotifier.clear();
+    carreraNotifier.add(_selectedId!);
     SnackbarHelper.showSuccess(context, 'Carrera actualizada');
     context.pop();
   }

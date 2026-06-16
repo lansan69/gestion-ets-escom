@@ -10,22 +10,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ─── Carrera ──────────────────────────────────────────────────────────────────
 
-// Notifier que almacena el ID (UUID) de la carrera seleccionada en el filtro.
-// El estado inicial es null (sin filtro de carrera; se muestran todas las carreras).
-class FilterCarreraNotifier extends Notifier<String?> {
+class FilterCarreraNotifier extends Notifier<Set<String>> {
   @override
-  String? build() => null;
-
-  // Establece la carrera a filtrar a partir de su ID.
-  void select(String id) => state = id;
-
-  // Limpia el filtro, mostrando exámenes de todas las carreras.
-  void clear() => state = null;
+  Set<String> build() => {};
+  void add(String id) => state = {...state, id};
+  void remove(String id) => state = state.where((s) => s != id).toSet();
+  void clear() => state = {};
 }
 
-// Provider que expone el Notifier del filtro de carrera.
-// Consumido por FilterCard y las pantallas de resultados de ETS.
-final filterCarreraProvider = NotifierProvider<FilterCarreraNotifier, String?>(
+final filterCarreraProvider = NotifierProvider<FilterCarreraNotifier, Set<String>>(
   FilterCarreraNotifier.new,
 );
 
@@ -61,22 +54,15 @@ final filterSemestresProvider =
 
 // ─── Área ─────────────────────────────────────────────────────────────────────
 
-// Notifier que almacena el ID (UUID) del área de formación seleccionada.
-// El estado inicial es null (sin filtro de área; se muestran todas las áreas).
-class FilterAreaNotifier extends Notifier<String?> {
+class FilterAreaNotifier extends Notifier<Set<String>> {
   @override
-  String? build() => null;
-
-  // Establece el área a filtrar a partir de su ID.
-  void select(String id) => state = id;
-
-  // Limpia el filtro, mostrando exámenes de todas las áreas de formación.
-  void clear() => state = null;
+  Set<String> build() => {};
+  void add(String id) => state = {...state, id};
+  void remove(String id) => state = state.where((s) => s != id).toSet();
+  void clear() => state = {};
 }
 
-// Provider que expone el Notifier del filtro de área de formación.
-// Consumido por FilterCard y las pantallas de resultados de ETS.
-final filterAreaProvider = NotifierProvider<FilterAreaNotifier, String?>(
+final filterAreaProvider = NotifierProvider<FilterAreaNotifier, Set<String>>(
   FilterAreaNotifier.new,
 );
 

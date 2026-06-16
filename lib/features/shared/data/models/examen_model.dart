@@ -56,6 +56,26 @@ class ExamenModel extends Examen {
             ? DateTime.parse(json['actualizado_en'] as String)
             : null,
       );
+    
+    // Convierte el modelo a un mapa JSON para enviar a Supabase (Insert/Update)
+  // Envía las llaves foráneas (FKs) en lugar de los objetos completos.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'materia_id': materia.id,
+      'salon_id': salon.id,
+      'profesor_id': profesor.id,
+      'fecha': fecha.toIso8601String(),
+      'hora': hora,
+      'turno': turno.value,
+      'documento_guia': documentoGuia,
+      'documento_proyecto': documentoProyecto,
+      'notas': notas,
+      'activo': activo, // Supabase sí acepta booleanos directos (true/false)
+      if (creadoEn != null) 'creado_en': creadoEn!.toIso8601String(),
+      if (actualizadoEn != null) 'actualizado_en': actualizadoEn!.toIso8601String(),
+    };
+  }
 
   // Parsea una fila plana del JOIN de SQLite (con alias de columnas) y reconstruye
   // todos los objetos anidados. Los alias usados coinciden con la query de

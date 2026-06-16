@@ -24,6 +24,16 @@ class CarreraModel extends Carrera {
     activo: json['activo'] as bool,
   );
 
+  // Convierte el modelo a un mapa JSON para enviar a Supabase (Insert/Update)
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nombre': nombre,
+      'abreviatura': abreviatura,
+      'plan': plan,
+      'activo': activo,
+    };
+  }
   // Parsea una fila de SQLite desde la tabla carreras.
   // SQLite almacena booleanos como INTEGER (0/1).
   factory CarreraModel.fromMap(Map<String, dynamic> map) => CarreraModel(

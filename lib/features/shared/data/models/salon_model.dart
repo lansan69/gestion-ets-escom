@@ -26,6 +26,18 @@ class SalonModel extends Salon {
         activo: json['activo'] as bool,
       );
 
+   // Convierte el modelo a un mapa JSON para enviar a Supabase (Insert/Update)
+  // etiqueta_salon es GENERATED ALWAYS en Supabase — no se envía en INSERT/UPDATE.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'edificio': edificio,
+      'piso': piso,
+      'numero_salon': numeroSalon,
+      'activo': activo,
+    };
+  }
+
   // Convierte el modelo a la entidad de dominio Salon.
   Salon toEntity() => Salon(
         id: id,
@@ -36,3 +48,4 @@ class SalonModel extends Salon {
         activo: activo,
       );
 }
+

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gestion_ets_escom/core/providers/core_providers.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:go_router/go_router.dart';
@@ -17,7 +18,9 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
   bool _hasError = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -26,17 +29,49 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
     super.dispose();
   }
 
-  void _iniciarSesion() {
-    if (_formKey.currentState!.validate()) {
-      // TODO: Reemplazar con la llamada real a Riverpod/Supabase
-      if (_usuarioController.text.isNotEmpty &&
-          _passwordController.text.isNotEmpty) {
-        setState(() => _hasError = false);
+  Future<void> _iniciarSesion() async {
+    debugPrint("Iniciando sesión");
+    debugPrint(_usuarioController.text.trim());
+    debugPrint(_passwordController.text);
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
+
+    final result = await ref
+        .read(loginUseCaseProvider)
+        .call(
+          correo: _usuarioController.text.trim(),
+          contrasena: _passwordController.text,
+        );
+    debugPrint('result: ${result}');
+    if (!mounted) return;
+
+    result.fold(
+      (failure) => setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = _friendlyError(failure.message);
+      }),
+      (admin) {
+        ref.read(currentAdminProvider.notifier).set(admin);
         context.go('/admin/dashboard');
-      } else {
-        setState(() => _hasError = true);
-      }
+      },
+    );
+  }
+
+  String _friendlyError(String raw) {
+    if (raw.contains('Invalid login credentials') ||
+        raw.contains('invalid_credentials')) {
+      return 'Usuario o contraseña incorrectos';
     }
+    if (raw.contains('network') || raw.contains('SocketException')) {
+      return 'Sin conexión. Verifica tu red e intenta de nuevo';
+    }
+    return 'Ocurrió un error. Intenta de nuevo';
   }
 
   @override
@@ -151,7 +186,7 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                                   const SizedBox(height: 32),
 
                                   const Text(
-                                    'Usuario',
+                                    'Correo electrónico',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -159,8 +194,10 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _usuarioController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    enabled: !_isLoading,
                                     decoration: InputDecoration(
-                                      hintText: 'Usuario o correo electrónico',
+                                      hintText: 'correo@escom.ipn.mx',
                                       prefixIcon: const Icon(
                                         Icons.person_outline,
                                       ),
@@ -186,6 +223,7 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                                   TextFormField(
                                     controller: _passwordController,
                                     obscureText: _obscurePassword,
+                                    enabled: !_isLoading,
                                     decoration: InputDecoration(
                                       hintText: 'Contraseña',
                                       prefixIcon: const Icon(
@@ -221,7 +259,7 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                                   Align(
                                     alignment: Alignment.centerRight,
                                     child: TextButton(
-                                      onPressed: () {},
+                                      onPressed: _isLoading ? null : () {},
                                       child: const Text(
                                         '¿Olvidaste tu contraseña?',
                                       ),
@@ -242,11 +280,22 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                                           ),
                                         ),
                                       ),
-                                      onPressed: _iniciarSesion,
-                                      child: const Text(
-                                        'Iniciar Sesión',
-                                        style: TextStyle(fontSize: 16),
-                                      ),
+                                      onPressed: _isLoading
+                                          ? null
+                                          : _iniciarSesion,
+                                      child: _isLoading
+                                          ? const SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Text(
+                                              'Iniciar Sesión',
+                                              style: TextStyle(fontSize: 16),
+                                            ),
                                     ),
                                   ),
 
@@ -268,10 +317,13 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                                             color: Colors.red[700],
                                           ),
                                           const SizedBox(width: 8),
-                                          Text(
-                                            'Usuario o contraseña incorrectos',
-                                            style: TextStyle(
-                                              color: Colors.red[700],
+                                          Expanded(
+                                            child: Text(
+                                              _errorMessage ??
+                                                  'Usuario o contraseña incorrectos',
+                                              style: TextStyle(
+                                                color: Colors.red[700],
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -285,7 +337,7 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
                         ),
                       ),
 
-                      // ─── Avatar flotante del IPN (igual que WelcomePage) ──────────────────
+                      // ─── Avatar flotante del IPN ──────────────────────────────────────────
                       Positioned(
                         top: -avatarRadius,
                         child: CircleAvatar(
@@ -313,7 +365,7 @@ class _AdminLoginPageState extends ConsumerState<AdminLoginPage> {
               left: 8,
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-                onPressed: () => context.pop(),
+                onPressed: _isLoading ? null : () => context.pop(),
               ),
             ),
           ],

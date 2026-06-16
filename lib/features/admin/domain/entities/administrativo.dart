@@ -7,7 +7,7 @@
 import 'package:equatable/equatable.dart';
 
 class Administrativo extends Equatable {
-  final int id;
+  final String id;
   final String nombre;
   final String correo;
   final DateTime creadoEn;

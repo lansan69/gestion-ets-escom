@@ -18,7 +18,7 @@ class AdministrativoModel extends Administrativo {
   // Parsea el JSON devuelto por Supabase desde la tabla administrativos.
   factory AdministrativoModel.fromJson(Map<String, dynamic> json) =>
       AdministrativoModel(
-        id: json['id'] as int,
+        id: json['id'] as String,
         nombre: json['nombre'] as String,
         correo: json['correo'] as String,
         creadoEn: DateTime.parse(json['creado_en'] as String),

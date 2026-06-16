@@ -3,6 +3,14 @@
 // USO: Define constantes de nombres de tablas usadas en las
 //      consultas a Supabase. Consumido por los datasources.
 // ============================================================
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+class ApiConstants {
+  static String storageFileUrl(String fileName) {
+    final base = dotenv.env['SUPABASE_URL']!;
+    return '$base/storage/v1/object/public/Material%20de%20apoyo/${Uri.encodeComponent(fileName)}';
+  }
+}
 
 class Tables {
   static const String examenes = 'examenes';

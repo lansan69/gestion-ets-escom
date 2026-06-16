@@ -7,11 +7,11 @@
 // ============================================================
 
 class LogModel {
-  final int id;
-  final int administrativoId;
+  final String id;
+  final String administrativoId;
   final String accion; // 'CREAR' | 'ACTUALIZAR' | 'ELIMINAR'
   final String tablaAfectada;
-  final int registroId;
+  final String registroId;
   final Map<String, dynamic>? datosAnteriores; // JSONB
   final Map<String, dynamic>? datosNuevos; // JSONB
   final DateTime creadoEn;
@@ -29,11 +29,11 @@ class LogModel {
 
   // Parsea el JSON devuelto por Supabase desde la tabla logs.
   factory LogModel.fromJson(Map<String, dynamic> json) => LogModel(
-        id: json['id'] as int,
-        administrativoId: json['administrativo_id'] as int,
+        id: json['id'] as String,
+        administrativoId: json['administrativo_id'] as String,
         accion: json['accion'] as String,
         tablaAfectada: json['tabla_afectada'] as String,
-        registroId: json['registro_id'] as int,
+        registroId: json['registro_id'] as String,
         datosAnteriores:
             json['datos_anteriores'] as Map<String, dynamic>?,
         datosNuevos: json['datos_nuevos'] as Map<String, dynamic>?,

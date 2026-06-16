@@ -1,28 +1,49 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:gestion_ets_escom/features/admin/presentation/widgets/catalog_modals.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gestion_ets_escom/features/admin/presentation/providers/admin_materia_providers.dart';
 import 'package:gestion_ets_escom/features/admin/presentation/widgets/admin_filter_sheets.dart';
+import 'package:gestion_ets_escom/features/admin/presentation/widgets/catalog_modals.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/materia.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 
-class AdminMateriasPage extends StatelessWidget {
-  final String carrera;
-
+class AdminMateriasPage extends ConsumerStatefulWidget {
+  final Carrera carrera;
   const AdminMateriasPage({super.key, required this.carrera});
 
   @override
+  ConsumerState<AdminMateriasPage> createState() => _AdminMateriasPageState();
+}
+
+class _AdminMateriasPageState extends ConsumerState<AdminMateriasPage> {
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filteredAsync =
+        ref.watch(adminMateriasFilteredProvider(widget.carrera.id));
+    final semestres = ref.watch(adminMateriaSemestresProvider);
+    final areaId = ref.watch(adminMateriaAreaProvider);
+    final hasFilters = semestres.isNotEmpty || areaId != null;
+
     return Scaffold(
       backgroundColor: AppColors.primaryDarkBlue,
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primaryDarkBlue,
         shape: const CircleBorder(),
         elevation: 4,
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) => MateriaFormModal(carreraDefault: carrera),
-          );
-        },
+        onPressed: () => showDialog(
+          context: context,
+          builder: (_) => MateriaFormModal(carrera: widget.carrera),
+        ),
         child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
       body: Stack(
@@ -33,17 +54,14 @@ class AdminMateriasPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ─── Header ──────────────────────────────────────────────────
+                // ─── Header ──────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 4, 16, 20),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                            color: Colors.white, size: 20),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const SizedBox(width: 4),
@@ -51,17 +69,14 @@ class AdminMateriasPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Materias',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            const Text('Materias',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600)),
                             const SizedBox(height: 2),
                             Text(
-                              carrera,
+                              '${widget.carrera.abreviatura} · Plan ${widget.carrera.plan}',
                               style: const TextStyle(
                                   color: Colors.white70, fontSize: 13),
                             ),
@@ -71,7 +86,7 @@ class AdminMateriasPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                // ─── Panel blanco ─────────────────────────────────────────────
+                // ─── Panel blanco ─────────────────────────────────────
                 Expanded(
                   child: Container(
                     decoration: const BoxDecoration(
@@ -94,8 +109,13 @@ class AdminMateriasPage extends StatelessWidget {
                                     color: const Color(0xFFF1F3F4),
                                     borderRadius: BorderRadius.circular(30),
                                   ),
-                                  child: const TextField(
-                                    decoration: InputDecoration(
+                                  child: TextField(
+                                    controller: _searchCtrl,
+                                    onChanged: (v) => ref
+                                        .read(adminMateriaSearchProvider
+                                            .notifier)
+                                        .set(v),
+                                    decoration: const InputDecoration(
                                       hintText: 'Buscar materia...',
                                       hintStyle: TextStyle(
                                           color: Colors.grey, fontSize: 15),
@@ -110,17 +130,37 @@ class AdminMateriasPage extends StatelessWidget {
                               ),
                               const SizedBox(width: 12),
                               InkWell(
-                                onTap: () =>
-                                    MateriasFilterSheet.show(context),
+                                onTap: () => MateriasFilterSheet.show(context),
                                 customBorder: const CircleBorder(),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primaryDarkBlue,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.tune_rounded,
-                                      color: Colors.white, size: 22),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: hasFilters
+                                            ? AppColors.primaryDarkBlue
+                                                .withValues(alpha: 0.85)
+                                            : AppColors.primaryDarkBlue,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.tune_rounded,
+                                          color: Colors.white, size: 22),
+                                    ),
+                                    if (hasFilters)
+                                      Positioned(
+                                        top: 0,
+                                        right: 0,
+                                        child: Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.orange,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -128,24 +168,30 @@ class AdminMateriasPage extends StatelessWidget {
                         ),
                         // LISTA DE MATERIAS
                         Expanded(
-                          child: ListView(
-                            padding:
-                                const EdgeInsets.only(top: 16, bottom: 80),
-                            children: [
-                              _MateriaCard(
-                                title: 'Redes de Computadoras',
-                                subtitle: 'Semestre 6 • Profesional',
-                                indicatorColor: Colors.blue[700]!,
-                                carrera: carrera,
-                              ),
-                              _MateriaCard(
-                                title: 'Compiladores',
-                                subtitle:
-                                    'Semestre 6 • Ciencias de la Ingeniería',
-                                indicatorColor: Colors.purple[600]!,
-                                carrera: carrera,
-                              ),
-                            ],
+                          child: filteredAsync.when(
+                            loading: () => const Center(
+                                child: CircularProgressIndicator()),
+                            error: (e, _) => Center(
+                              child: Text('Error: $e',
+                                  style: const TextStyle(color: Colors.red)),
+                            ),
+                            data: (materias) {
+                              if (materias.isEmpty) {
+                                return const Center(
+                                  child: Text('No hay materias registradas.',
+                                      style: TextStyle(color: Colors.grey)),
+                                );
+                              }
+                              return ListView.builder(
+                                padding: const EdgeInsets.only(
+                                    top: 16, bottom: 80),
+                                itemCount: materias.length,
+                                itemBuilder: (_, i) => _MateriaCard(
+                                  materia: materias[i],
+                                  carrera: widget.carrera,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -161,21 +207,29 @@ class AdminMateriasPage extends StatelessWidget {
   }
 }
 
-class _MateriaCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final Color indicatorColor;
-  final String carrera;
+// ─── Tarjeta de materia ────────────────────────────────────────────────────
+class _MateriaCard extends ConsumerWidget {
+  final Materia materia;
+  final Carrera carrera;
 
-  const _MateriaCard({
-    required this.title,
-    required this.subtitle,
-    required this.indicatorColor,
-    required this.carrera,
-  });
+  const _MateriaCard({required this.materia, required this.carrera});
+
+  Color _areaColor() {
+    final hex = materia.areaFormacion?.color;
+    if (hex == null || hex.isEmpty) return Colors.blueGrey;
+    try {
+      return Color(int.parse(hex.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      return Colors.blueGrey;
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final areaColor = _areaColor();
+    final subtitulo =
+        'Semestre ${materia.semestre}${materia.areaFormacion != null ? ' · ${materia.areaFormacion!.nombre}' : ''}';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
       decoration: BoxDecoration(
@@ -195,7 +249,7 @@ class _MateriaCard extends StatelessWidget {
             Container(
               width: 6,
               decoration: BoxDecoration(
-                color: indicatorColor,
+                color: areaColor,
                 borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
                     bottomLeft: Radius.circular(16)),
@@ -206,17 +260,17 @@ class _MateriaCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title,
+                        Text(materia.nombre,
                             style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF222222))),
                         const SizedBox(height: 6),
-                        Text(subtitle,
+                        Text(subtitulo,
                             style: const TextStyle(
                                 fontSize: 13, color: Colors.grey)),
                       ],
@@ -230,19 +284,13 @@ class _MateriaCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton.icon(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => MateriaFormModal(
-                                isEditing: true,
-                                carreraDefault: carrera,
-                                nombre: title,
-                                semestre:
-                                    subtitle.split('Semestre ')[1].split(' • ')[0],
-                                area: subtitle.split(' • ')[1],
-                              ),
-                            );
-                          },
+                          onPressed: () => showDialog(
+                            context: context,
+                            builder: (_) => MateriaFormModal(
+                              carrera: carrera,
+                              materia: materia,
+                            ),
+                          ),
                           icon: const Icon(Icons.edit_outlined,
                               size: 16, color: AppColors.primaryDarkBlue),
                           label: const Text('Editar',
@@ -252,13 +300,13 @@ class _MateriaCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         TextButton.icon(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => DeleteCatalogModal(
-                                  title: title, subtitle: subtitle),
-                            );
-                          },
+                          onPressed: () => showDialog(
+                            context: context,
+                            builder: (_) => _DeleteMateriaDialog(
+                              materia: materia,
+                              carreraId: carrera.id,
+                            ),
+                          ),
                           icon: const Icon(Icons.delete_outline,
                               size: 16, color: Colors.redAccent),
                           label: const Text('Eliminar',
@@ -272,6 +320,128 @@ class _MateriaCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Diálogo de confirmación de eliminación ────────────────────────────────
+class _DeleteMateriaDialog extends ConsumerWidget {
+  final Materia materia;
+  final String carreraId;
+
+  const _DeleteMateriaDialog(
+      {required this.materia, required this.carreraId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final estado = ref.watch(adminMateriaMutationProvider);
+
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.delete_sweep_rounded,
+                  size: 48, color: Colors.red[600]),
+              const SizedBox(height: 16),
+              const Text('¿Eliminar materia?',
+                  style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('Esta acción no se puede deshacer.',
+                  style: TextStyle(color: Colors.grey[600])),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.red),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${materia.nombre}\nSemestre ${materia.semestre}',
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red[600]),
+                      onPressed: estado.isLoading
+                          ? null
+                          : () async {
+                              await ref
+                                  .read(adminMateriaMutationProvider.notifier)
+                                  .removeMateria(materia.id);
+                              final s =
+                                  ref.read(adminMateriaMutationProvider);
+                              if (!context.mounted) return;
+                              if (s.isSuccess) {
+                                ref.invalidate(adminMateriasRawProvider(
+                                    carreraId));
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Materia eliminada'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                ref
+                                    .read(
+                                        adminMateriaMutationProvider.notifier)
+                                    .resetState();
+                              } else if (s.errorMessage != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(s.errorMessage!),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                ref
+                                    .read(
+                                        adminMateriaMutationProvider.notifier)
+                                    .resetState();
+                              }
+                            },
+                      child: estado.isLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Eliminar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

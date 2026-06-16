@@ -38,6 +38,11 @@ import 'package:gestion_ets_escom/features/admin/data/repositories/admin_reposit
 import 'package:gestion_ets_escom/features/admin/domain/repositories/admin_repository.dart';
 import 'package:gestion_ets_escom/features/admin/data/repositories/auth_repository_impl.dart';
 import 'package:gestion_ets_escom/features/admin/domain/repositories/auth_repository.dart';
+import 'package:gestion_ets_escom/features/admin/domain/usecases/examen/create_examen_completo.dart';
+import 'package:gestion_ets_escom/features/admin/domain/usecases/examen/update_examen_completo.dart';
+import 'package:gestion_ets_escom/features/admin/domain/entities/administrativo.dart';
+import 'package:gestion_ets_escom/features/admin/domain/usecases/login/login_usecase.dart';
+import 'package:gestion_ets_escom/features/admin/domain/usecases/login/logout_usecase.dart';
 
 // Expone la instancia global del cliente de Supabase ya inicializado.
 // Consumido por sharedDatasourceProvider y cualquier datasource que acceda a Supabase.
@@ -131,7 +136,7 @@ final clearCacheProvider = Provider<ClearCache>(
 
 // CRUD de Catálogos y Exámenes del Administrador
 final adminRemoteDatasourceProvider = Provider<AdminRemoteDatasource>(
-  (ref) => AdminRemoteDatasourceImpl(), 
+  (ref) => AdminRemoteDatasourceImpl(),
 );
 
 final adminRepositoryProvider = Provider<AdminRepository>(
@@ -139,6 +144,50 @@ final adminRepositoryProvider = Provider<AdminRepository>(
     remoteDatasource: ref.read(adminRemoteDatasourceProvider),
   ),
 );
+
+final createExamenCompletoProvider = Provider<CreateExamenCompleto>(
+  (ref) => CreateExamenCompleto(ref.read(adminRepositoryProvider)),
+);
+
+final updateExamenCompletoProvider = Provider<UpdateExamenCompleto>(
+  (ref) => UpdateExamenCompleto(ref.read(adminRepositoryProvider)),
+);
+
+// Autenticación del Administrador
+final authRemoteDatasourceProvider = Provider<AuthRemoteDatasource>(
+  (ref) => AuthRemoteDatasourceImpl(
+    supabaseClient: ref.read(supabaseClientProvider),
+  ),
+);
+
+final authRepositoryProvider = Provider<AuthRepository>(
+  (ref) => AuthRepositoryImpl(
+    remoteDatasource: ref.read(authRemoteDatasourceProvider),
+  ),
+);
+
+final loginUseCaseProvider = Provider<LoginUseCase>(
+  (ref) => LoginUseCase(ref.read(authRepositoryProvider)),
+);
+
+final logoutUseCaseProvider = Provider<LogoutUseCase>(
+  (ref) => LogoutUseCase(ref.read(authRepositoryProvider)),
+);
+
+// Almacena el administrativo autenticado; null cuando no hay sesión activa.
+class CurrentAdminNotifier extends Notifier<Administrativo?> {
+  @override
+  Administrativo? build() => null;
+
+  void set(Administrativo admin) => state = admin;
+  void clear() => state = null;
+}
+
+final currentAdminProvider =
+    NotifierProvider<CurrentAdminNotifier, Administrativo?>(
+  CurrentAdminNotifier.new,
+);
+
 // ── Estadísticas ──────────────────────────
 final getStatsProvider = Provider<GetStats>(
   (ref) => GetStats(ref.read(sharedRepositoryProvider)),

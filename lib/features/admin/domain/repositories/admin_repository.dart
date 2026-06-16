@@ -3,8 +3,12 @@
 // USO: Contrato abstracto del repositorio admin. Define las
 //      operaciones CRUD de exámenes, carreras y salones.
 // ============================================================
+import 'dart:typed_data';
+
 import 'package:dartz/dartz.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
+import 'package:gestion_ets_escom/features/admin/domain/entities/examen_create_params.dart';
+import 'package:gestion_ets_escom/features/admin/domain/entities/examen_update_params.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/edificio.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
@@ -18,6 +22,10 @@ abstract class AdminRepository {
   Future<Either<Failure, Examen>> createExamen(Examen examen);
   Future<Either<Failure, Examen>> updateExamen(Examen examen);
   Future<Either<Failure, void>> deleteExamen(String id);
+  Future<Either<Failure, void>> createExamenCompleto(ExamenCreateParams params);
+  Future<Either<Failure, void>> updateExamenCompleto(ExamenUpdateParams params);
+  Future<Either<Failure, String?>> uploadExamenFile(String fileName, Uint8List bytes);
+  Future<Either<Failure, String>> getExamenPdfUrl(String fileName);
 
   // ==========================================
   // CARRERA CRUD (Catálogo)

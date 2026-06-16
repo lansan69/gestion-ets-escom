@@ -698,6 +698,7 @@ class DeleteCatalogModal extends ConsumerWidget {
             if (s.isSuccess) {
               if (isCarrera) {
                 ref.invalidate(carrerasProvider);
+                ref.invalidate(adminCarrerasInactivasProvider);
               } else {
                 ref.invalidate(salonesProvider);
                 ref.invalidate(adminSalonesInactivosProvider);

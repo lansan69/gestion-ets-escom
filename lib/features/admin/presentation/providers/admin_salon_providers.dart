@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/providers/core_providers.dart';
-import 'package:gestion_ets_escom/features/shared/data/models/salon_model.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/examen.dart';
 import 'package:gestion_ets_escom/features/shared/domain/entities/salon.dart';
 
 // ── Búsqueda por número/etiqueta de salón ──────────────────────────────────
@@ -35,15 +36,37 @@ final adminSalonPisoFilterProvider =
 
 // ── Salones inactivos (soft-deleted) para la vista de reactivación ──────────
 final adminSalonesInactivosProvider = FutureProvider<List<Salon>>((ref) async {
-  final client = ref.read(supabaseClientProvider);
-  final response = await client
-      .from('salon')
-      .select()
-      .eq('activo', false)
-      .order('edificio')
-      .order('piso')
-      .order('numero_salon');
-  return response
-      .map((json) => SalonModel.fromJson(json).toEntity())
-      .toList();
+  final models =
+      await ref.read(adminRemoteDatasourceProvider).getSalonesInactivos();
+  return models.map((m) => m.toEntity()).toList();
+});
+
+// ── Catálogo de salones activos (id + etiqueta) para el dropdown de edición ──
+final adminSalonesActivosCatalogProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  return ref.read(adminRemoteDatasourceProvider).getCatalogSalonesActivos();
+});
+
+// ── Catálogo de materias activas (id + nombre + carrera) para el dropdown de alta ──
+final adminMateriasActivasCatalogProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  return ref.read(adminRemoteDatasourceProvider).getCatalogMaterias();
+});
+
+// ── Catálogo de profesores activos (id + nombre + apellido + correo) para el dropdown ──
+final adminProfesoresActivosCatalogProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  return ref.read(adminRemoteDatasourceProvider).getCatalogProfesores();
+});
+
+// ── Carreras inactivas (soft-deleted) para la vista de reactivación ──────────
+final adminCarrerasInactivasProvider = FutureProvider<List<Carrera>>((ref) async {
+  final models = await ref.read(adminRemoteDatasourceProvider).getCarrerasInactivas();
+  return models.map((m) => m.toEntity()).toList();
+});
+
+// ── Exámenes inactivos (soft-deleted) para la vista de reactivación ──────────
+final adminExamenesInactivosProvider = FutureProvider<List<Examen>>((ref) async {
+  final models = await ref.read(adminRemoteDatasourceProvider).getExamenesInactivos();
+  return models.map((m) => m.toEntity()).toList();
 });

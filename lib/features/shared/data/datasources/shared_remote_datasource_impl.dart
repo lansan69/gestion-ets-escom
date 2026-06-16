@@ -36,10 +36,9 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
 
   SharedRemoteDatasourceImpl({required this.supabaseClient});
 
-  // Obtiene todas las carreras activas.
   @override
   Future<List<CarreraModel>> getCarreras() async {
-    final response = await supabaseClient.from('carrera').select();
+    final response = await supabaseClient.from('carrera').select().eq('activo', true);
     return response.map((json) => CarreraModel.fromJson(json)).toList();
   }
 
@@ -74,11 +73,12 @@ class SharedRemoteDatasourceImpl implements SharedRemoteDatasource {
     return response.map((json) => ProfesorModel.fromJson(json)).toList();
   }
 
-  // Obtiene todos los exámenes con sus relaciones completas.
   @override
   Future<List<ExamenModel>> getExamenes() async {
-    final response =
-        await supabaseClient.from('examen').select(_examenSelect);
+    final response = await supabaseClient
+        .from('examen')
+        .select(_examenSelect)
+        .eq('activo', true);
     return response.map((json) => ExamenModel.fromJson(json)).toList();
   }
 

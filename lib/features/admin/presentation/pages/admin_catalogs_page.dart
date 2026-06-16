@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gestion_ets_escom/core/providers/core_providers.dart';
+import 'package:gestion_ets_escom/features/admin/presentation/providers/admin_salon_providers.dart';
 import 'package:gestion_ets_escom/features/admin/presentation/widgets/catalog_modals.dart';
 import 'package:gestion_ets_escom/features/admin/presentation/pages/admin_materias_page.dart';
 import 'package:gestion_ets_escom/features/admin/presentation/pages/admin_salones_page.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/carrera.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/background_pattern_painter.dart';
 import 'package:gestion_ets_escom/features/user/presentation/providers/carrera_providers.dart';
@@ -77,13 +80,48 @@ class AdminCatalogsPage extends StatelessWidget {
 }
 
 // =======================================================================
-// PESTAÑA CARRERAS — datos reales desde carrerasProvider
+// PESTAÑA CARRERAS — activas (carrerasProvider) e inactivas (adminCarrerasInactivasProvider)
 // =======================================================================
-class _CarrerasTab extends ConsumerWidget {
+class _CarrerasTab extends ConsumerStatefulWidget {
   const _CarrerasTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CarrerasTab> createState() => _CarrerasTabState();
+}
+
+class _CarrerasTabState extends ConsumerState<_CarrerasTab> {
+  bool _showInactivas = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Row(
+            children: [
+              _CarreraToggleChip(
+                label: 'Activas',
+                selected: !_showInactivas,
+                onTap: () => setState(() => _showInactivas = false),
+              ),
+              const SizedBox(width: 8),
+              _CarreraToggleChip(
+                label: 'Inactivas',
+                selected: _showInactivas,
+                onTap: () => setState(() => _showInactivas = true),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _showInactivas ? _buildInactivas() : _buildActivas(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActivas() {
     final async = ref.watch(carrerasProvider);
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -100,8 +138,8 @@ class _CarrerasTab extends ConsumerWidget {
             return _CatalogCard(
               title: '${c.abreviatura} · Plan ${c.plan}',
               subtitle: c.nombre,
-              countText: c.activo ? 'Activa' : 'Inactiva',
-              indicatorColor: c.activo ? const Color(0xFF388E3C) : Colors.grey,
+              countText: 'Activa',
+              indicatorColor: const Color(0xFF388E3C),
               onTapGeneral: () => Navigator.push(context, MaterialPageRoute(
                 builder: (_) => AdminMateriasPage(carrera: c),
               )),
@@ -118,6 +156,150 @@ class _CarrerasTab extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildInactivas() {
+    final async = ref.watch(adminCarrerasInactivasProvider);
+    return async.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: Colors.red))),
+      data: (carreras) {
+        if (carreras.isEmpty) {
+          return const Center(child: Text('No hay carreras inactivas.', style: TextStyle(color: Colors.grey)));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.only(top: 16, bottom: 80),
+          itemCount: carreras.length,
+          itemBuilder: (_, i) {
+            final c = carreras[i];
+            return _InactivaCarreraCard(carrera: c);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _CarreraToggleChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CarreraToggleChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primaryDarkBlue : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? AppColors.primaryDarkBlue : Colors.grey[300]!),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : Colors.grey[600],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InactivaCarreraCard extends ConsumerWidget {
+  final Carrera carrera;
+  const _InactivaCarreraCard({required this.carrera});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12, left: 20, right: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Container(
+              width: 6,
+              decoration: BoxDecoration(
+                color: Colors.orange[300],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text('Inactiva', style: TextStyle(fontSize: 11, color: Colors.orange[700], fontWeight: FontWeight.w600)),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${carrera.abreviatura} · Plan ${carrera.plan}',
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(carrera.nombre, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        try {
+                          await ref.read(adminRemoteDatasourceProvider).reactivarCarrera(carrera.id);
+                          if (!context.mounted) return;
+                          ref.invalidate(adminCarrerasInactivasProvider);
+                          ref.invalidate(carrerasProvider);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Carrera reactivada'), backgroundColor: Colors.green),
+                          );
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                          );
+                        }
+                      },
+                      child: const Text('Reactivar'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

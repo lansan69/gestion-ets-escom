@@ -1,11 +1,17 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gestion_ets_escom/core/providers/core_providers.dart';
 import 'package:gestion_ets_escom/core/utils/date_formatter.dart';
+import 'package:gestion_ets_escom/features/admin/domain/entities/examen_create_params.dart';
+import 'package:gestion_ets_escom/features/admin/domain/entities/examen_update_params.dart';
 import 'package:gestion_ets_escom/features/admin/presentation/providers/admin_filter_providers.dart';
+import 'package:gestion_ets_escom/features/shared/domain/entities/turno.dart';
+import 'package:gestion_ets_escom/features/admin/presentation/providers/admin_salon_providers.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_colors.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/app_text_styles.dart';
 import 'package:gestion_ets_escom/features/shared/presentation/theme/elements/app_search_bar.dart';
@@ -282,6 +288,7 @@ class _GestionarTab extends ConsumerStatefulWidget {
 class _GestionarTabState extends ConsumerState<_GestionarTab> {
   final _searchController = TextEditingController();
   Timer? _searchDebounce;
+  bool _showInactivos = false;
 
   @override
   void initState() {
@@ -307,9 +314,9 @@ class _GestionarTabState extends ConsumerState<_GestionarTab> {
   }
 
   bool get _hasActiveFilters =>
-      ref.watch(adminFilterCarreraProvider) != null ||
+      ref.watch(adminFilterCarreraProvider).isNotEmpty ||
       ref.watch(adminFilterSemestresProvider).isNotEmpty ||
-      ref.watch(adminFilterAreaProvider) != null ||
+      ref.watch(adminFilterAreaProvider).isNotEmpty ||
       ref.watch(adminFilterTurnoProvider) != null ||
       ref.watch(adminFilterFechaProvider) != null ||
       ref.watch(adminFilterSalonProvider) != null ||
@@ -329,6 +336,7 @@ class _GestionarTabState extends ConsumerState<_GestionarTab> {
   @override
   Widget build(BuildContext context) {
     final examenesAsync = ref.watch(adminExamenesFilteredProvider);
+    debugPrint("examenes: ${examenesAsync}");
     final carreras = ref.watch(carrerasProvider).value ?? [];
     final areas = ref.watch(adminAreasFormacionProvider).value ?? [];
 
@@ -339,13 +347,11 @@ class _GestionarTabState extends ConsumerState<_GestionarTab> {
     final filterFecha = ref.watch(adminFilterFechaProvider);
     final filterSalon = ref.watch(adminFilterSalonProvider);
 
-    final selectedCarreras = filterCarrera == null
-        ? {'Todas'}
-        : {filterCarrera};
+    final selectedCarreras = filterCarrera.isEmpty ? {'Todas'} : filterCarrera;
     final selectedSemestres = filterSemestres.isEmpty
         ? {'Todos'}
         : filterSemestres.map((s) => s.toString()).toSet();
-    final selectedArea = filterArea == null ? {'Todas'} : {filterArea};
+    final selectedArea = filterArea.isEmpty ? {'Todas'} : filterArea;
     final selectedTurno = filterTurno ?? 'Todos';
 
     // ── chip builders ────────────────────────────────────────────────────
@@ -395,9 +401,10 @@ class _GestionarTabState extends ConsumerState<_GestionarTab> {
                   selectedSalon: filterSalon,
                   onCarrerasChanged: (set) {
                     final n = ref.read(adminFilterCarreraProvider.notifier);
-                    (set.contains('Todas') || set.isEmpty)
-                        ? n.clear()
-                        : n.select(set.first);
+                    n.clear();
+                    if (!set.contains('Todas')) {
+                      for (final id in set) { n.add(id); }
+                    }
                   },
                   onSemestresChanged: (set) {
                     final n = ref.read(adminFilterSemestresProvider.notifier);
@@ -409,9 +416,10 @@ class _GestionarTabState extends ConsumerState<_GestionarTab> {
                   },
                   onAreaChanged: (set) {
                     final n = ref.read(adminFilterAreaProvider.notifier);
-                    (set.contains('Todas') || set.isEmpty)
-                        ? n.clear()
-                        : n.select(set.first);
+                    n.clear();
+                    if (!set.contains('Todas')) {
+                      for (final id in set) { n.add(id); }
+                    }
                   },
                   onTurnoChanged: (v) {
                     final n = ref.read(adminFilterTurnoProvider.notifier);
@@ -429,7 +437,7 @@ class _GestionarTabState extends ConsumerState<_GestionarTab> {
                 ),
               ),
             ),
-            if (_hasActiveFilters)
+            if (_hasActiveFilters && !_showInactivos)
               Align(
                 alignment: Alignment.centerRight,
                 child: Padding(
@@ -445,7 +453,47 @@ class _GestionarTabState extends ConsumerState<_GestionarTab> {
                   ),
                 ),
               ),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: [
+                  _ToggleChip(
+                    label: 'Activos',
+                    selected: !_showInactivos,
+                    onTap: () => setState(() => _showInactivos = false),
+                  ),
+                  const SizedBox(width: 8),
+                  _ToggleChip(
+                    label: 'Inactivos',
+                    selected: _showInactivos,
+                    onTap: () => setState(() => _showInactivos = true),
+                  ),
+                ],
+              ),
+            ),
+            if (_showInactivos)
+              Expanded(
+                child: ref.watch(adminExamenesInactivosProvider).when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => const Center(child: Text('Error al cargar inactivos')),
+                  data: (inactivos) => inactivos.isEmpty
+                      ? const Center(child: Text('No hay exámenes inactivos', style: TextStyle(color: Colors.grey)))
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 12, bottom: 80),
+                          itemCount: inactivos.length,
+                          itemBuilder: (_, i) {
+                            final ex = inactivos[i];
+                            final fecha = DateFormatter.formatDate(ex.fecha);
+                            return _InactivoExamenCard(
+                              examen: ex,
+                              fecha: fecha,
+                            );
+                          },
+                        ),
+                ),
+              )
+            else
+              Expanded(
               child: examenesAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) =>
@@ -581,6 +629,147 @@ class _StatBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// =======================================================================
+// CHIP DE TOGGLE ACTIVOS/INACTIVOS
+// =======================================================================
+class _ToggleChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ToggleChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primaryDarkBlue : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.primaryDarkBlue : Colors.grey[300]!,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : Colors.grey[600],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =======================================================================
+// TARJETA DE EXAMEN INACTIVO CON BOTÓN REACTIVAR
+// =======================================================================
+class _InactivoExamenCard extends ConsumerWidget {
+  final Examen examen;
+  final String fecha;
+
+  const _InactivoExamenCard({required this.examen, required this.fecha});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Container(
+              width: 6,
+              decoration: BoxDecoration(
+                color: Colors.orange[300],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Inactivo',
+                                  style: TextStyle(fontSize: 11, color: Colors.orange[700], fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  examen.materia.nombre,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${examen.profesor.nombreCompleto} • $fecha',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        try {
+                          await ref.read(adminRemoteDatasourceProvider).reactivarExamen(examen.id);
+                          if (!context.mounted) return;
+                          ref.invalidate(adminExamenesInactivosProvider);
+                          ref.invalidate(adminExamenesProvider);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Examen reactivado'), backgroundColor: Colors.green),
+                          );
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                          );
+                        }
+                      },
+                      child: const Text('Reactivar'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -812,19 +1001,9 @@ class _ExamListCardAdmin extends StatelessWidget {
                               context: context,
                               barrierDismissible: true,
                               builder: (_) => _EditExamModal(
+                                examen: examen,
                                 carreraChips: carreraChips,
                                 areaChips: areaChips,
-                                carrera: examen.materia.carrera.id,
-                                area: examen.materia.areaFormacion?.id ?? '',
-                                colorBarra: barColor,
-                                turno: turno,
-                                materia: materia,
-                                fecha: fecha,
-                                hora: hora,
-                                salon: salon,
-                                profesor: profe,
-                                correo: examen.profesor.correo ?? '',
-                                notas: examen.notas ?? '',
                               ),
                             ),
                             icon: Icon(
@@ -843,6 +1022,7 @@ class _ExamListCardAdmin extends StatelessWidget {
                               context: context,
                               barrierDismissible: true,
                               builder: (_) => _DeleteExamModal(
+                                examId: examen.id,
                                 materia: materia,
                                 profe: profe,
                                 fecha: fecha,
@@ -922,6 +1102,7 @@ class _AdminDetailActions extends StatelessWidget {
                 context: context,
                 barrierDismissible: true,
                 builder: (_) => _DeleteExamModal(
+                  examId: examen.id,
                   materia: data.nombre,
                   profe: data.profesor,
                   fecha: data.fecha,
@@ -945,19 +1126,9 @@ class _AdminDetailActions extends StatelessWidget {
                 context: context,
                 barrierDismissible: true,
                 builder: (_) => _EditExamModal(
+                  examen: examen,
                   carreraChips: carreraChips,
                   areaChips: areaChips,
-                  carrera: examen.materia.carrera.id,
-                  area: examen.materia.areaFormacion?.id ?? '',
-                  colorBarra: data.barColor,
-                  turno: turno,
-                  materia: data.nombre,
-                  fecha: data.fecha,
-                  hora: data.hora,
-                  salon: data.salon,
-                  profesor: data.profesor,
-                  correo: examen.profesor.correo ?? '',
-                  notas: examen.notas ?? '',
                 ),
               ),
               icon: const Icon(Icons.edit_outlined, size: 18),
@@ -973,38 +1144,127 @@ class _AdminDetailActions extends StatelessWidget {
 // =======================================================================
 // MODAL DE EDICIÓN
 // =======================================================================
-class _EditExamModal extends StatelessWidget {
+class _EditExamModal extends ConsumerStatefulWidget {
+  final Examen examen;
   final List<({String id, String label})> carreraChips;
   final List<({String id, String label})> areaChips;
-  final String carrera;
-  final String area;
-  final Color colorBarra;
-  final String turno;
-  final String materia;
-  final String fecha;
-  final String hora;
-  final String salon;
-  final String profesor;
-  final String correo;
-  final String notas;
 
   const _EditExamModal({
+    required this.examen,
     required this.carreraChips,
     required this.areaChips,
-    required this.carrera,
-    required this.area,
-    required this.colorBarra,
-    required this.turno,
-    required this.materia,
-    required this.fecha,
-    required this.hora,
-    required this.salon,
-    required this.profesor,
-    required this.correo,
-    required this.notas,
   });
 
-  InputDecoration _inputDecoration({String? hint, IconData? icon}) {
+  @override
+  ConsumerState<_EditExamModal> createState() => _EditExamModalState();
+}
+
+class _EditExamModalState extends ConsumerState<_EditExamModal> {
+  late TextEditingController _horaCtrl;
+  late TextEditingController _notasCtrl;
+
+  late String _selectedCarreraId;
+  String? _selectedAreaId;
+  late String _selectedSalonId;
+  late DateTime _selectedFecha;
+  String? _selectedProfesorId;
+
+  ({String name, Uint8List bytes})? _pendingGuia;
+  ({String name, Uint8List bytes})? _pendingProyecto;
+  String? _guiaFileName;
+  String? _proyectoFileName;
+
+  bool _isSaving = false;
+  String? _saveError;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.examen;
+    _horaCtrl = TextEditingController(text: e.hora);
+    _notasCtrl = TextEditingController(text: e.notas ?? '');
+    _selectedCarreraId = e.materia.carrera.id;
+    _selectedAreaId = e.materia.areaFormacion?.id;
+    _selectedSalonId = e.salon.id;
+    _selectedFecha = e.fecha;
+    _selectedProfesorId = e.profesor.id;
+    _guiaFileName = e.documentoGuia;
+    _proyectoFileName = e.documentoProyecto;
+  }
+
+  @override
+  void dispose() {
+    _horaCtrl.dispose();
+    _notasCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardarCambios() async {
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
+
+    if (_pendingGuia != null) {
+      final result = await ref
+          .read(adminRepositoryProvider)
+          .uploadExamenFile(_pendingGuia!.name, _pendingGuia!.bytes);
+      if (!mounted) return;
+      if (result.isLeft()) {
+        setState(() {
+          _isSaving = false;
+          _saveError = 'Error al subir la guía de estudio';
+        });
+        return;
+      }
+      _guiaFileName = _pendingGuia!.name;
+    }
+
+    if (_pendingProyecto != null) {
+      final result = await ref
+          .read(adminRepositoryProvider)
+          .uploadExamenFile(_pendingProyecto!.name, _pendingProyecto!.bytes);
+      if (!mounted) return;
+      if (result.isLeft()) {
+        setState(() {
+          _isSaving = false;
+          _saveError = 'Error al subir el proyecto';
+        });
+        return;
+      }
+      _proyectoFileName = _pendingProyecto!.name;
+    }
+
+    final params = ExamenUpdateParams(
+      examenId: widget.examen.id,
+      materiaId: widget.examen.materia.id,
+      carreraId: _selectedCarreraId,
+      areaFormacionId: _selectedAreaId,
+      profesorId: _selectedProfesorId ?? widget.examen.profesor.id,
+      salonId: _selectedSalonId,
+      fecha: _selectedFecha,
+      hora: _horaCtrl.text.trim(),
+      documentoGuia: _guiaFileName,
+      documentoProyecto: _proyectoFileName,
+      notas: _notasCtrl.text.trim().isEmpty ? null : _notasCtrl.text.trim(),
+    );
+
+    final result = await ref.read(updateExamenCompletoProvider).call(params);
+    if (!mounted) return;
+
+    result.fold(
+      (failure) => setState(() {
+        _isSaving = false;
+        _saveError = failure.message;
+      }),
+      (_) {
+        ref.invalidate(adminExamenesProvider);
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  InputDecoration _inputDeco({String? hint, IconData? icon}) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
@@ -1033,7 +1293,7 @@ class _EditExamModal extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle(String title, IconData icon) {
+  Widget _sectionTitle(String title, IconData icon) {
     return Row(
       children: [
         Icon(icon, size: 18, color: const Color(0xFF00338D)),
@@ -1051,13 +1311,7 @@ class _EditExamModal extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(
-    String label,
-    String initialValue, {
-    IconData? icon,
-    int maxLines = 1,
-    String? hint,
-  }) {
+  Widget _labeled(String label, Widget field) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1070,250 +1324,19 @@ class _EditExamModal extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          initialValue: initialValue,
-          maxLines: maxLines,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          decoration: _inputDecoration(hint: hint, icon: icon),
-        ),
-      ],
-    );
-  }
-
-  /// Dropdown para listas de records ({id, label}) — carrera y área.
-  Widget _buildRecordDropdown(
-    String label,
-    String currentId,
-    List<({String id, String label})> items,
-    IconData icon,
-  ) {
-    final validId = items.any((e) => e.id == currentId)
-        ? currentId
-        : items.first.id;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: validId,
-          isExpanded: true,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Colors.grey[500],
-          ),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-          ),
-          decoration: _inputDecoration(icon: icon),
-          items: items
-              .map(
-                (e) => DropdownMenuItem(
-                  value: e.id,
-                  child: Text(e.label, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: (val) {}, // TODO: conectar a provider
-        ),
-      ],
-    );
-  }
-
-  /// Dropdown para listas simples de String — turno.
-  Widget _buildStringDropdown(
-    String label,
-    String currentValue,
-    List<String> items,
-    IconData icon,
-  ) {
-    final validValue = items.contains(currentValue)
-        ? currentValue
-        : items.first;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: validValue,
-          isExpanded: true,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Colors.grey[500],
-          ),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-          ),
-          decoration: _inputDecoration(icon: icon),
-          items: items
-              .map(
-                (v) => DropdownMenuItem(
-                  value: v,
-                  child: Text(v, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: (val) {}, // TODO: conectar a provider
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAutocomplete(
-    String label,
-    String initialValue,
-    List<String> options,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Autocomplete<String>(
-          initialValue: TextEditingValue(text: initialValue),
-          optionsBuilder: (tv) {
-            if (tv.text.isEmpty) return const Iterable<String>.empty();
-            return options.where(
-              (o) => o.toLowerCase().contains(tv.text.toLowerCase()),
-            );
-          },
-          fieldViewBuilder: (context, controller, focusNode, onDone) =>
-              TextFormField(
-                controller: controller,
-                focusNode: focusNode,
-                onEditingComplete: onDone,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: _inputDecoration(
-                  hint: 'Escribe para buscar...',
-                  icon: Icons.meeting_room_outlined,
-                ),
-              ),
-          optionsViewBuilder: (context, onSelected, options) => Align(
-            alignment: Alignment.topLeft,
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(16),
-              clipBehavior: Clip.antiAlias,
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width - 80,
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (_, i) {
-                    final option = options.elementAt(i);
-                    return ListTile(
-                      leading: const Icon(
-                        Icons.location_on_outlined,
-                        size: 18,
-                        color: Colors.grey,
-                      ),
-                      title: Text(
-                        option,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onTap: () => onSelected(option),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilePicker(String label, String? fileName) {
-    final hasFile = fileName != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {}, // TODO: file_picker
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: hasFile ? Colors.green[50] : const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: hasFile ? Colors.green[300]! : Colors.grey[200]!,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  hasFile ? Icons.check_circle : Icons.upload_file_rounded,
-                  size: 20,
-                  color: hasFile
-                      ? Colors.green[600]
-                      : const Color(0xFF00338D).withValues(alpha: 0.6),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    fileName ?? 'Toca para explorar archivos...',
-                    style: TextStyle(
-                      color: hasFile ? Colors.green[800] : Colors.grey[500],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        field,
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final salonesAsync = ref.watch(adminSalonesActivosCatalogProvider);
+    final examen = widget.examen;
+    final barColor =
+        _colorFromHex(examen.materia.areaFormacion?.color) ??
+        AppColors.primaryDarkBlue;
+
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
       child: Dialog(
@@ -1350,7 +1373,7 @@ class _EditExamModal extends StatelessWidget {
                       width: 6,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: colorBarra,
+                        color: barColor,
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
@@ -1360,7 +1383,7 @@ class _EditExamModal extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            materia,
+                            examen.materia.nombre,
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -1410,7 +1433,7 @@ class _EditExamModal extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionTitle(
+                      _sectionTitle(
                         'Clasificación Académica',
                         Icons.category_outlined,
                       ),
@@ -1418,31 +1441,110 @@ class _EditExamModal extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildRecordDropdown(
+                            child: _labeled(
                               'Carrera',
-                              carrera,
-                              carreraChips,
-                              Icons.school_outlined,
+                              DropdownButtonFormField<String>(
+                                value:
+                                    widget.carreraChips.any(
+                                      (c) => c.id == _selectedCarreraId,
+                                    )
+                                    ? _selectedCarreraId
+                                    : widget.carreraChips.first.id,
+                                isExpanded: true,
+                                icon: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: Colors.grey[500],
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: _inputDeco(
+                                  icon: Icons.school_outlined,
+                                ),
+                                items: widget.carreraChips
+                                    .map(
+                                      (c) => DropdownMenuItem(
+                                        value: c.id,
+                                        child: Text(
+                                          c.label,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null)
+                                    setState(() => _selectedCarreraId = val);
+                                },
+                              ),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildStringDropdown('Turno', turno, [
-                              'Matutino',
-                              'Vespertino',
-                            ], Icons.wb_sunny_outlined),
+                            child: _labeled(
+                              'Turno',
+                              TextFormField(
+                                initialValue: examen.turno.value,
+                                readOnly: true,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: _inputDeco(
+                                  icon: Icons.wb_sunny_outlined,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _buildRecordDropdown(
+                      _labeled(
                         'Área de Formación',
-                        area,
-                        areaChips,
-                        Icons.account_tree_outlined,
+                        DropdownButtonFormField<String?>(
+                          value:
+                              widget.areaChips.any(
+                                (a) => a.id == _selectedAreaId,
+                              )
+                              ? _selectedAreaId
+                              : null,
+                          isExpanded: true,
+                          icon: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Colors.grey[500],
+                          ),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          decoration: _inputDeco(
+                            icon: Icons.account_tree_outlined,
+                          ),
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Sin área'),
+                            ),
+                            ...widget.areaChips.map(
+                              (a) => DropdownMenuItem(
+                                value: a.id,
+                                child: Text(
+                                  a.label,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                          onChanged: (val) =>
+                              setState(() => _selectedAreaId = val),
+                        ),
                       ),
                       const SizedBox(height: 32),
-                      _buildSectionTitle(
+                      _sectionTitle(
                         'Programación y Espacio',
                         Icons.event_available_outlined,
                       ),
@@ -1450,64 +1552,259 @@ class _EditExamModal extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildTextField(
+                            child: _labeled(
                               'Fecha',
-                              fecha,
-                              icon: Icons.calendar_today_rounded,
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _selectedFecha,
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime(2030),
+                                  );
+                                  if (picked != null) {
+                                    setState(() => _selectedFecha = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F9FA),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.grey[200]!,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today_rounded,
+                                        size: 20,
+                                        color: const Color(
+                                          0xFF00338D,
+                                        ).withValues(alpha: 0.6),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        DateFormatter.formatDate(
+                                          _selectedFecha,
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildTextField(
+                            child: _labeled(
                               'Horario',
-                              hora,
-                              icon: Icons.access_time_rounded,
+                              TextFormField(
+                                controller: _horaCtrl,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: _inputDeco(
+                                  icon: Icons.access_time_rounded,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _buildAutocomplete('Salón / Laboratorio', salon, [
-                        '1203',
-                        '1204',
-                        '2201',
-                        '4003',
-                        '4103',
-                        'Laboratorio de Redes',
-                      ]),
+                      _labeled(
+                        'Salón / Laboratorio',
+                        salonesAsync.when(
+                          loading: () => const SizedBox(
+                            height: 56,
+                            child: Center(child: LinearProgressIndicator()),
+                          ),
+                          error: (e, _) => Text(
+                            'Error cargando salones',
+                            style: TextStyle(color: Colors.red[600]),
+                          ),
+                          data: (salones) {
+                            final validId =
+                                salones.any(
+                                  (s) => s['id'].toString() == _selectedSalonId,
+                                )
+                                ? _selectedSalonId
+                                : salones.isNotEmpty
+                                ? salones.first['id'].toString()
+                                : _selectedSalonId;
+                            return DropdownButtonFormField<String>(
+                              value: validId,
+                              isExpanded: true,
+                              icon: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Colors.grey[500],
+                              ),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: _inputDeco(
+                                icon: Icons.meeting_room_outlined,
+                              ),
+                              items: salones
+                                  .map(
+                                    (s) => DropdownMenuItem(
+                                      value: s['id'].toString(),
+                                      child: Text(
+                                        s['etiqueta_salon']?.toString() ??
+                                            '${s['edificio']}-${s['numero_salon']}',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                if (val != null)
+                                  setState(() => _selectedSalonId = val);
+                              },
+                            );
+                          },
+                        ),
+                      ),
                       const SizedBox(height: 32),
-                      _buildSectionTitle(
+                      _sectionTitle(
                         'Coordinador Evaluador',
                         Icons.badge_outlined,
                       ),
                       const SizedBox(height: 16),
-                      _buildTextField(
-                        'Nombre completo',
-                        profesor,
-                        icon: Icons.person_outline_rounded,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildTextField(
-                        'Correo Institucional',
-                        correo,
-                        icon: Icons.alternate_email_rounded,
+                      _labeled(
+                        'Profesor',
+                        ref.watch(adminProfesoresActivosCatalogProvider).when(
+                          loading: () => const SizedBox(
+                            height: 56,
+                            child: Center(child: LinearProgressIndicator()),
+                          ),
+                          error: (e, _) => Text(
+                            'Error cargando profesores',
+                            style: TextStyle(color: Colors.red[600]),
+                          ),
+                          data: (profesores) {
+                            final validId = profesores.any(
+                              (p) => p['id'].toString() == _selectedProfesorId,
+                            )
+                                ? _selectedProfesorId
+                                : (profesores.isNotEmpty
+                                    ? profesores.first['id'].toString()
+                                    : null);
+                            return DropdownButtonFormField<String>(
+                              value: validId,
+                              isExpanded: true,
+                              icon: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Colors.grey[500],
+                              ),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: _inputDeco(
+                                icon: Icons.person_outline_rounded,
+                              ),
+                              items: profesores
+                                  .map(
+                                    (p) => DropdownMenuItem(
+                                      value: p['id'].toString(),
+                                      child: Text(
+                                        '${p['nombre']} ${p['primer_apellido']}',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _selectedProfesorId = val);
+                                }
+                              },
+                            );
+                          },
+                        ),
                       ),
                       const SizedBox(height: 32),
-                      _buildSectionTitle(
+                      _sectionTitle(
                         'Recursos Adicionales',
                         Icons.folder_open_outlined,
                       ),
                       const SizedBox(height: 16),
-                      _buildFilePicker('Proyecto (Opcional)', null),
-                      const SizedBox(height: 16),
-                      _buildFilePicker('Guía de Estudio (Opcional)', null),
-                      const SizedBox(height: 16),
-                      _buildTextField(
-                        'Nota para el alumno',
-                        notas,
-                        maxLines: 3,
-                        hint: 'Instrucciones especiales para el examen...',
+                      _FileLink(
+                        label: 'Proyecto (Opcional)',
+                        fileName: _proyectoFileName,
+                        onFileSelected: (name, bytes) => setState(() {
+                          _pendingProyecto = (name: name, bytes: bytes);
+                          _proyectoFileName = name;
+                        }),
                       ),
+                      const SizedBox(height: 16),
+                      _FileLink(
+                        label: 'Guía de Estudio (Opcional)',
+                        fileName: _guiaFileName,
+                        onFileSelected: (name, bytes) => setState(() {
+                          _pendingGuia = (name: name, bytes: bytes);
+                          _guiaFileName = name;
+                        }),
+                      ),
+                      const SizedBox(height: 16),
+                      _labeled(
+                        'Nota para el alumno',
+                        TextFormField(
+                          controller: _notasCtrl,
+                          maxLines: 3,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          decoration: _inputDeco(
+                            hint: 'Instrucciones especiales para el examen...',
+                          ),
+                        ),
+                      ),
+                      if (_saveError != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red[200]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.red[600],
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _saveError!,
+                                  style: TextStyle(
+                                    color: Colors.red[700],
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1533,7 +1830,16 @@ class _EditExamModal extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: FilledButton.icon(
-                    icon: const Icon(Icons.check_circle_outline),
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.check_circle_outline),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF00338D),
                       shape: RoundedRectangleBorder(
@@ -1541,13 +1847,10 @@ class _EditExamModal extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    onPressed: () {
-                      // TODO: UPDATE en Supabase
-                      Navigator.pop(context);
-                    },
-                    label: const Text(
-                      'Guardar Cambios',
-                      style: TextStyle(
+                    onPressed: _isSaving ? null : _guardarCambios,
+                    label: Text(
+                      _isSaving ? 'Guardando...' : 'Guardar Cambios',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
@@ -1567,16 +1870,55 @@ class _EditExamModal extends StatelessWidget {
 // =======================================================================
 // MODAL DE CONFIRMACIÓN PARA ELIMINAR
 // =======================================================================
-class _DeleteExamModal extends StatelessWidget {
+class _DeleteExamModal extends ConsumerStatefulWidget {
+  final String examId;
   final String materia;
   final String profe;
   final String fecha;
 
   const _DeleteExamModal({
+    required this.examId,
     required this.materia,
     required this.profe,
     required this.fecha,
   });
+
+  @override
+  ConsumerState<_DeleteExamModal> createState() => _DeleteExamModalState();
+}
+
+class _DeleteExamModalState extends ConsumerState<_DeleteExamModal> {
+  bool _isDeleting = false;
+
+  Future<void> _confirmarEliminar() async {
+    setState(() => _isDeleting = true);
+    try {
+      final result = await ref.read(adminRepositoryProvider).deleteExamen(widget.examId);
+      if (!mounted) return;
+      result.fold(
+        (failure) {
+          setState(() => _isDeleting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(failure.message), backgroundColor: Colors.red),
+          );
+        },
+        (_) {
+          ref.invalidate(adminExamenesProvider);
+          ref.invalidate(adminExamenesInactivosProvider);
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Examen desactivado'), backgroundColor: Colors.green),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1615,7 +1957,7 @@ class _DeleteExamModal extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                '¿Eliminar examen?',
+                '¿Desactivar examen?',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
@@ -1625,7 +1967,7 @@ class _DeleteExamModal extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Esta acción es irreversible y los alumnos inscritos (si los hay) perderán su registro.',
+                'El examen pasará a la sección de inactivos y podrá reactivarse después.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[600],
@@ -1662,7 +2004,7 @@ class _DeleteExamModal extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            materia,
+                            widget.materia,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -1673,7 +2015,7 @@ class _DeleteExamModal extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '$profe • $fecha',
+                            '${widget.profe} • ${widget.fecha}',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -1700,7 +2042,7 @@ class _DeleteExamModal extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _isDeleting ? null : () => Navigator.pop(context),
                       child: Text(
                         'Cancelar',
                         style: TextStyle(
@@ -1722,17 +2064,17 @@ class _DeleteExamModal extends StatelessWidget {
                         ),
                         elevation: 0,
                       ),
-                      onPressed: () {
-                        // TODO: DELETE en Supabase
-                        Navigator.pop(context);
-                      },
-                      child: const Text(
-                        'Sí, eliminar',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      onPressed: _isDeleting ? null : _confirmarEliminar,
+                      child: _isDeleting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                            )
+                          : const Text(
+                              'Sí, desactivar',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
                 ],
@@ -1748,263 +2090,169 @@ class _DeleteExamModal extends StatelessWidget {
 // =======================================================================
 // MODAL PARA CREAR NUEVO ETS
 // =======================================================================
-class _AddExamModal extends StatelessWidget {
+class _AddExamModal extends ConsumerStatefulWidget {
   const _AddExamModal();
 
-  InputDecoration _inputDecoration({String? hint, IconData? icon}) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-      filled: true,
-      fillColor: const Color(0xFFF8F9FA),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey[200]!),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey[200]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF00338D), width: 1.5),
-      ),
-      prefixIcon: icon != null
-          ? Icon(
-              icon,
-              size: 20,
-              color: const Color(0xFF00338D).withValues(alpha: 0.6),
-            )
-          : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+  @override
+  ConsumerState<_AddExamModal> createState() => _AddExamModalState();
+}
+
+class _AddExamModalState extends ConsumerState<_AddExamModal> {
+  final _horaCtrl = TextEditingController();
+  final _notasCtrl = TextEditingController();
+
+  String? _selectedMateriaId;
+  String? _selectedSalonId;
+  String? _selectedProfesorId;
+  Turno _selectedTurno = Turno.matutino;
+  DateTime _selectedFecha = DateTime.now();
+
+  ({String name, Uint8List bytes})? _pendingGuia;
+  ({String name, Uint8List bytes})? _pendingProyecto;
+  String? _guiaFileName;
+  String? _proyectoFileName;
+
+  bool _isSaving = false;
+  String? _saveError;
+
+  @override
+  void dispose() {
+    _horaCtrl.dispose();
+    _notasCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _crearExamen() async {
+    if (_selectedMateriaId == null || _selectedSalonId == null) {
+      setState(() => _saveError = 'Selecciona una materia y un salón');
+      return;
+    }
+    if (_selectedProfesorId == null || _horaCtrl.text.trim().isEmpty) {
+      setState(() => _saveError = 'Selecciona un profesor y completa el horario');
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
+
+    if (_pendingGuia != null) {
+      final result = await ref
+          .read(adminRepositoryProvider)
+          .uploadExamenFile(_pendingGuia!.name, _pendingGuia!.bytes);
+      if (!mounted) return;
+      if (result.isLeft()) {
+        setState(() {
+          _isSaving = false;
+          _saveError = 'Error al subir la guía de estudio';
+        });
+        return;
+      }
+      _guiaFileName = _pendingGuia!.name;
+    }
+
+    if (_pendingProyecto != null) {
+      final result = await ref
+          .read(adminRepositoryProvider)
+          .uploadExamenFile(_pendingProyecto!.name, _pendingProyecto!.bytes);
+      if (!mounted) return;
+      if (result.isLeft()) {
+        setState(() {
+          _isSaving = false;
+          _saveError = 'Error al subir el proyecto';
+        });
+        return;
+      }
+      _proyectoFileName = _pendingProyecto!.name;
+    }
+
+    final params = ExamenCreateParams(
+      materiaId: _selectedMateriaId!,
+      salonId: _selectedSalonId!,
+      profesorId: _selectedProfesorId!,
+      fecha: _selectedFecha,
+      hora: _horaCtrl.text.trim(),
+      turno: _selectedTurno,
+      documentoGuia: _guiaFileName,
+      documentoProyecto: _proyectoFileName,
+      notas: _notasCtrl.text.trim().isEmpty ? null : _notasCtrl.text.trim(),
+    );
+
+    final result = await ref.read(createExamenCompletoProvider).call(params);
+    if (!mounted) return;
+
+    result.fold(
+      (failure) => setState(() {
+        _isSaving = false;
+        _saveError = failure.message;
+      }),
+      (_) {
+        ref.invalidate(adminExamenesProvider);
+        Navigator.pop(context);
+      },
     );
   }
 
-  Widget _buildSectionTitle(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: const Color(0xFF00338D)),
-        const SizedBox(width: 8),
-        Text(
-          title.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF00338D),
-            letterSpacing: 1.0,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTextField(
-    String label,
-    String initialValue, {
-    IconData? icon,
-    int maxLines = 1,
-    String? hint,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          initialValue: initialValue.isEmpty ? null : initialValue,
-          maxLines: maxLines,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          decoration: _inputDecoration(hint: hint, icon: icon),
-        ),
-      ],
-    );
-  }
-
-  // FIX: usa `value` en lugar del inexistente `initialValue`
-  Widget _buildDropdown(
-    String label,
-    String currentValue,
-    List<String> items,
-    IconData icon,
-  ) {
-    final validValue = items.contains(currentValue)
-        ? currentValue
-        : items.first;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: validValue,
-          isExpanded: true,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Colors.grey[500],
-          ),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-          ),
-          decoration: _inputDecoration(icon: icon),
-          items: items
-              .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-              .toList(),
-          onChanged: (val) {},
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAutocomplete(
-    String label,
-    String initialValue,
-    List<String> options,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Autocomplete<String>(
-          initialValue: TextEditingValue(text: initialValue),
-          optionsBuilder: (tv) {
-            if (tv.text.isEmpty) return const Iterable<String>.empty();
-            return options.where(
-              (o) => o.toLowerCase().contains(tv.text.toLowerCase()),
-            );
-          },
-          fieldViewBuilder: (context, controller, focusNode, onDone) =>
-              TextFormField(
-                controller: controller,
-                focusNode: focusNode,
-                onEditingComplete: onDone,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: _inputDecoration(
-                  hint: 'Escribe para buscar...',
-                  icon: Icons.search_rounded,
-                ),
-              ),
-          optionsViewBuilder: (context, onSelected, options) => Align(
-            alignment: Alignment.topLeft,
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(16),
-              clipBehavior: Clip.antiAlias,
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width - 80,
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (_, i) {
-                    final option = options.elementAt(i);
-                    return ListTile(
-                      leading: const Icon(
-                        Icons.label_important_outline_rounded,
-                        size: 18,
-                        color: Colors.grey,
-                      ),
-                      title: Text(
-                        option,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onTap: () => onSelected(option),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilePicker(String label, String? fileName) {
-    final hasFile = fileName != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        InkWell(
+  InputDecoration _inputDeco({String? hint, IconData? icon}) => InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+        filled: true,
+        fillColor: const Color(0xFFF8F9FA),
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {},
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: hasFile ? Colors.green[50] : const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: hasFile ? Colors.green[300]! : Colors.grey[200]!,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  hasFile ? Icons.check_circle : Icons.upload_file_rounded,
-                  size: 20,
-                  color: hasFile
-                      ? Colors.green[600]
-                      : const Color(0xFF00338D).withValues(alpha: 0.6),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    fileName ?? 'Toca para explorar archivos...',
-                    style: TextStyle(
-                      color: hasFile ? Colors.green[800] : Colors.grey[500],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
+          borderSide: BorderSide(color: Colors.grey[200]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[200]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF00338D), width: 1.5),
+        ),
+        prefixIcon: icon != null
+            ? Icon(icon, size: 20,
+                color: const Color(0xFF00338D).withValues(alpha: 0.6))
+            : null,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      );
+
+  Widget _sectionTitle(String title, IconData icon) => Row(
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF00338D)),
+          const SizedBox(width: 8),
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF00338D),
+              letterSpacing: 1.0,
             ),
           ),
-        ),
-      ],
-    );
-  }
+        ],
+      );
+
+  Widget _labeled(String label, Widget field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700])),
+          const SizedBox(height: 8),
+          field,
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
+    final materiasAsync = ref.watch(adminMateriasActivasCatalogProvider);
+    final salonesAsync = ref.watch(adminSalonesActivosCatalogProvider);
+
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
       child: Dialog(
@@ -2029,10 +2277,10 @@ class _AddExamModal extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.blue[50]?.withValues(alpha: 0.4),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(28),
-                  ),
-                  border: Border(bottom: BorderSide(color: Colors.blue[100]!)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(28)),
+                  border:
+                      Border(bottom: BorderSide(color: Colors.blue[100]!)),
                 ),
                 padding: const EdgeInsets.fromLTRB(24, 24, 16, 24),
                 child: Row(
@@ -2060,7 +2308,7 @@ class _AddExamModal extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Completa la información para dar de alta la oferta',
+                            'Completa la información para dar de alta',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.blue[700],
@@ -2082,11 +2330,8 @@ class _AddExamModal extends StatelessWidget {
                         ],
                       ),
                       child: IconButton(
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Colors.grey,
-                          size: 20,
-                        ),
+                        icon: const Icon(Icons.close_rounded,
+                            color: Colors.grey, size: 20),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ),
@@ -2101,127 +2346,276 @@ class _AddExamModal extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionTitle(
-                        'Asignatura y Clasificación',
-                        Icons.menu_book_outlined,
-                      ),
+                      _sectionTitle(
+                          'Asignatura', Icons.menu_book_outlined),
                       const SizedBox(height: 16),
-                      _buildAutocomplete(
-                        'Unidad de Aprendizaje (Materia)',
-                        '',
-                        [
-                          'Redes de Computadoras',
-                          'Compiladores',
-                          'Análisis y Diseño de Sistemas',
-                          'Arquitectura de Computadoras',
-                          'Liderazgo Personal',
-                          'Trabajo Terminal II',
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDropdown('Carrera', 'ISC 2020', [
-                              'ISC 2020',
-                              'ISC 2009',
-                              'IIA',
-                              'LCD',
-                              'ISISA',
-                            ], Icons.school_outlined),
+                      _labeled(
+                        'Materia',
+                        materiasAsync.when(
+                          loading: () => const SizedBox(
+                            height: 56,
+                            child: Center(child: LinearProgressIndicator()),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildDropdown('Turno', 'Matutino', [
-                              'Matutino',
-                              'Vespertino',
-                            ], Icons.wb_sunny_outlined),
+                          error: (e, _) => Text('Error cargando materias',
+                              style: TextStyle(color: Colors.red[600])),
+                          data: (materias) => DropdownButtonFormField<String>(
+                            value: _selectedMateriaId,
+                            isExpanded: true,
+                            hint: const Text('Selecciona una materia'),
+                            icon: Icon(Icons.keyboard_arrow_down_rounded,
+                                color: Colors.grey[500]),
+                            style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500),
+                            decoration:
+                                _inputDeco(icon: Icons.menu_book_outlined),
+                            items: materias
+                                .map((m) => DropdownMenuItem(
+                                      value: m['id'].toString(),
+                                      child: Text(
+                                        '${m['nombre']} — ${(m['carrera'] as Map?)?['abreviatura'] ?? ''}',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (val) =>
+                                setState(() => _selectedMateriaId = val),
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      _buildDropdown(
-                        'Área de Formación',
-                        'Profesional',
-                        [
-                          'Científica Básica',
-                          'Profesional',
-                          'Institucional',
-                          'Terminal y de integración',
-                        ],
-                        Icons.account_tree_outlined,
+                      _labeled(
+                        'Turno',
+                        DropdownButtonFormField<Turno>(
+                          value: _selectedTurno,
+                          isExpanded: true,
+                          icon: Icon(Icons.keyboard_arrow_down_rounded,
+                              color: Colors.grey[500]),
+                          style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500),
+                          decoration: _inputDeco(icon: Icons.wb_sunny_outlined),
+                          items: Turno.values
+                              .map((t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t.value),
+                                  ))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _selectedTurno = val);
+                            }
+                          },
+                        ),
                       ),
                       const SizedBox(height: 32),
-                      _buildSectionTitle(
-                        'Programación y Espacio',
-                        Icons.event_available_outlined,
-                      ),
+                      _sectionTitle(
+                          'Programación y Espacio',
+                          Icons.event_available_outlined),
                       const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
-                            child: _buildTextField(
+                            child: _labeled(
                               'Fecha',
-                              '',
-                              icon: Icons.calendar_today_rounded,
-                              hint: 'Ej. 19 jun 2026',
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _selectedFecha,
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime(2030),
+                                  );
+                                  if (picked != null) {
+                                    setState(() => _selectedFecha = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal:4, vertical: 16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F9FA),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                        color: Colors.grey[200]!),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today_rounded,
+                                        size: 20,
+                                        color: const Color(0xFF00338D)
+                                            .withValues(alpha: 0.6),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        DateFormatter.formatDate(
+                                            _selectedFecha),
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildTextField(
+                            child: _labeled(
                               'Horario',
-                              '',
-                              icon: Icons.access_time_rounded,
-                              hint: 'Ej. 10:00:00',
+                              TextFormField(
+                                controller: _horaCtrl,
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500),
+                                decoration: _inputDeco(
+                                    hint: 'Ej. 10:00:00',
+                                    icon: Icons.access_time_rounded),
+                              ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _buildAutocomplete('Salón / Laboratorio', '', [
-                        '1203',
-                        '1204',
-                        '2201',
-                        '4003',
-                        '4103',
-                        'Laboratorio de Redes',
-                      ]),
+                      _labeled(
+                        'Salón / Laboratorio',
+                        salonesAsync.when(
+                          loading: () => const SizedBox(
+                            height: 56,
+                            child: Center(child: LinearProgressIndicator()),
+                          ),
+                          error: (e, _) => Text('Error cargando salones',
+                              style: TextStyle(color: Colors.red[600])),
+                          data: (salones) => DropdownButtonFormField<String>(
+                            value: _selectedSalonId,
+                            isExpanded: true,
+                            hint: const Text('Selecciona un salón'),
+                            icon: Icon(Icons.keyboard_arrow_down_rounded,
+                                color: Colors.grey[500]),
+                            style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500),
+                            decoration: _inputDeco(
+                                icon: Icons.meeting_room_outlined),
+                            items: salones
+                                .map((s) => DropdownMenuItem(
+                                      value: s['id'].toString(),
+                                      child: Text(
+                                        s['etiqueta_salon']?.toString() ??
+                                            '${s['edificio']}-${s['numero_salon']}',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (val) =>
+                                setState(() => _selectedSalonId = val),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 32),
-                      _buildSectionTitle(
-                        'Coordinador Evaluador',
-                        Icons.badge_outlined,
-                      ),
+                      _sectionTitle(
+                          'Coordinador Evaluador', Icons.badge_outlined),
                       const SizedBox(height: 16),
-                      _buildTextField(
-                        'Nombre completo',
-                        '',
-                        icon: Icons.person_outline_rounded,
-                        hint: 'Nombre del profesor de ESCOM',
-                      ),
-                      const SizedBox(height: 16),
-                      _buildTextField(
-                        'Correo Institucional',
-                        '',
-                        icon: Icons.alternate_email_rounded,
-                        hint: 'ejemplo@ipn.mx',
+                      _labeled(
+                        'Profesor',
+                        ref.watch(adminProfesoresActivosCatalogProvider).when(
+                          loading: () => const SizedBox(
+                            height: 56,
+                            child: Center(child: LinearProgressIndicator()),
+                          ),
+                          error: (e, _) => Text('Error cargando profesores',
+                              style: TextStyle(color: Colors.red[600])),
+                          data: (profesores) => DropdownButtonFormField<String>(
+                            value: _selectedProfesorId,
+                            isExpanded: true,
+                            hint: const Text('Selecciona un profesor'),
+                            icon: Icon(Icons.keyboard_arrow_down_rounded,
+                                color: Colors.grey[500]),
+                            style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500),
+                            decoration: _inputDeco(
+                                icon: Icons.person_outline_rounded),
+                            items: profesores
+                                .map((p) => DropdownMenuItem(
+                                      value: p['id'].toString(),
+                                      child: Text(
+                                        '${p['nombre']} ${p['primer_apellido']}',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (val) =>
+                                setState(() => _selectedProfesorId = val),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 32),
-                      _buildSectionTitle(
-                        'Recursos Adicionales',
-                        Icons.folder_open_outlined,
+                      _sectionTitle(
+                          'Recursos Adicionales',
+                          Icons.folder_open_outlined),
+                      const SizedBox(height: 16),
+                      _FileLink(
+                        label: 'Proyecto (Opcional)',
+                        fileName: _proyectoFileName,
+                        onFileSelected: (name, bytes) => setState(() {
+                          _pendingProyecto = (name: name, bytes: bytes);
+                          _proyectoFileName = name;
+                        }),
                       ),
                       const SizedBox(height: 16),
-                      _buildFilePicker('Proyecto (Opcional)', null),
+                      _FileLink(
+                        label: 'Guía de Estudio (Opcional)',
+                        fileName: _guiaFileName,
+                        onFileSelected: (name, bytes) => setState(() {
+                          _pendingGuia = (name: name, bytes: bytes);
+                          _guiaFileName = name;
+                        }),
+                      ),
                       const SizedBox(height: 16),
-                      _buildFilePicker('Guía de Estudio (Opcional)', null),
-                      const SizedBox(height: 16),
-                      _buildTextField(
+                      _labeled(
                         'Nota para el alumno',
-                        '',
-                        maxLines: 3,
-                        hint: 'Instrucciones especiales para el examen...',
+                        TextFormField(
+                          controller: _notasCtrl,
+                          maxLines: 3,
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w500),
+                          decoration: _inputDeco(
+                              hint:
+                                  'Instrucciones especiales para el examen...'),
+                        ),
                       ),
+                      if (_saveError != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red[200]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline,
+                                  color: Colors.red[600], size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _saveError!,
+                                  style: TextStyle(
+                                      color: Colors.red[700], fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -2233,8 +2627,7 @@ class _AddExamModal extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(28),
-                  ),
+                      bottom: Radius.circular(28)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.03),
@@ -2247,25 +2640,27 @@ class _AddExamModal extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: FilledButton.icon(
-                    icon: const Icon(Icons.add_circle_outline_rounded),
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2.5, color: Colors.white),
+                          )
+                        : const Icon(Icons.add_circle_outline_rounded),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF00338D),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                          borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
-                    onPressed: () {
-                      // TODO: INSERT en Supabase
-                      Navigator.pop(context);
-                    },
-                    label: const Text(
-                      'Crear Examen',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
+                    onPressed: _isSaving ? null : _crearExamen,
+                    label: Text(
+                      _isSaving ? 'Creando...' : 'Crear Examen',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5),
                     ),
                   ),
                 ),
@@ -2274,6 +2669,142 @@ class _AddExamModal extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// =======================================================================
+// WIDGET REUTILIZABLE: SUBIDA DE ARCHIVO A SUPABASE STORAGE
+// =======================================================================
+class _FileLink extends StatefulWidget {
+  final String label;
+  final String? fileName;
+  final void Function(String name, Uint8List bytes) onFileSelected;
+
+  const _FileLink({
+    required this.label,
+    required this.onFileSelected,
+    this.fileName,
+  });
+
+  @override
+  State<_FileLink> createState() => _FileLinkState();
+}
+
+class _FileLinkState extends State<_FileLink> {
+  bool _isPicking = false;
+
+  Future<void> _pickFile() async {
+    const pdfType = XTypeGroup(label: 'PDF', extensions: ['pdf']);
+    final file = await openFile(acceptedTypeGroups: [pdfType]);
+    if (file == null) return;
+
+    setState(() => _isPicking = true);
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    setState(() => _isPicking = false);
+    widget.onFileSelected(file.name, bytes);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasFile = widget.fileName != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: hasFile ? Colors.green[50] : const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasFile ? Colors.green[300]! : Colors.grey[200]!,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                hasFile
+                    ? Icons.insert_drive_file_outlined
+                    : Icons.upload_file_rounded,
+                size: 20,
+                color: hasFile
+                    ? Colors.green[600]
+                    : const Color(0xFF00338D).withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.fileName ?? 'Sin archivo',
+                  style: TextStyle(
+                    color: hasFile ? Colors.green[800] : Colors.grey[400],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _isPicking ? null : _pickFile,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00338D).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: _isPicking
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: const Color(
+                              0xFF00338D,
+                            ).withValues(alpha: 0.7),
+                          ),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.upload_rounded,
+                              size: 14,
+                              color: const Color(
+                                0xFF00338D,
+                              ).withValues(alpha: 0.8),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Subir',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(
+                                  0xFF00338D,
+                                ).withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

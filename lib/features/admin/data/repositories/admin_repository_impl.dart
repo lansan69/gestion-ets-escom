@@ -3,6 +3,8 @@
 // USO: Implementación del repositorio admin. Coordina el
 //      datasource remoto y mapea errores a Failures.
 // ============================================================
+import 'dart:typed_data';
+
 import 'package:dartz/dartz.dart';
 import 'package:gestion_ets_escom/core/errors/failures.dart';
 import 'package:gestion_ets_escom/features/admin/data/datasources/admin_remote_datasource.dart';
@@ -47,11 +49,56 @@ class AdminRepositoryImpl implements AdminRepository {
   }
 
   @override
-  // CORRECCIÓN: String en lugar de int
-  Future<Either<Failure, void>> deleteExamen(String id) async { 
+  Future<Either<Failure, void>> deleteExamen(String id) async {
     try {
       await remoteDatasource.deleteExamen(id);
       return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> createExamenCompleto(ExamenCreateParams params) async {
+    try {
+      await remoteDatasource.createExamenCompleto(params);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateExamenCompleto(ExamenUpdateParams params) async {
+    try {
+      await remoteDatasource.updateExamenCompleto(params);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+Future<Either<Failure, String>> getExamenPdfUrl(String fileName) async {
+  try {
+    // remoteDatasource should expose the method we built in the previous step
+    final String url = await remoteDatasource.getExamenFileUrl(fileName);
+    
+    if (url.isEmpty) {
+      return Left(ServerFailure('The generated URL is empty.'));
+    }
+    
+    return Right(url);
+  } catch (e) {
+    return Left(ServerFailure('Failed to retrieve PDF URL: ${e.toString()}'));
+  }
+}
+
+  @override
+  Future<Either<Failure, String?>> uploadExamenFile(String fileName, Uint8List bytes) async {
+    try {
+      final result = await remoteDatasource.uploadExamenFile(fileName, bytes);
+      return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

@@ -4,7 +4,7 @@ Aplicación móvil para explorar, filtrar y gestionar los **Exámenes a Título 
 
 ---
 
-## Contenido
+## Contenido  
 
 1. [Características](#características)
 2. [Tecnologías](#tecnologías)
